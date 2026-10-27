@@ -1,6 +1,7 @@
 import { Advance, AdvanceRequest, Customer, CustomerShare, Folder, Honorary, Invoice, InvoicePayment } from '../../api/generated';
 import { formatChf, formatDate } from '../../shared/format';
 import { formatMinutes, fromCents, toCents } from '../../shared/money';
+import { monthNames, texts } from '../../i18n/i18n';
 
 /** Everything the folder screen shows, as loaded from the API. */
 export interface FolderData {
@@ -50,11 +51,6 @@ export interface MonthGroup {
   items: TimelineItem[];
 }
 
-const MONTHS = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-];
-
 /** Order of the events of a same day, the most recent first: payments after the documents they pay. */
 const SAME_DAY_ORDER: Record<ItemRef['kind'], number> = {
   payment: 0, advance: 0, 'invoice-recall': 1, 'request-recall': 1, invoice: 2, request: 2, honorary: 3, opening: 4,
@@ -65,23 +61,26 @@ export const requestRef = (id: number | undefined) => 'P-' + id;
 
 export function customerName(customer: Customer | undefined): string {
   if (!customer) {
-    return 'client inconnu';
+    return texts().folder.timeline.unknownClient;
   }
-  return customer.fullName || [customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'client ' + customer.id;
+  return customer.fullName || [customer.firstName, customer.lastName].filter(Boolean).join(' ') || texts().folder.timeline.client(customer.id);
 }
 
 export function meansText(means: { cash?: boolean; ticketId?: number; iban?: string }): string {
+  const t = texts().folder.timeline.means;
   if (means.cash) {
-    return 'Comptant';
+    return t.cash;
   }
   if (means.ticketId) {
-    return 'Bulletin QR';
+    return t.slip;
   }
-  return 'Virement';
+  return t.transfer;
 }
 
 /** All the events of the folder, the most recent first. */
 export function buildTimeline(data: FolderData, today: string): TimelineItem[] {
+  const t = texts().folder.timeline;
+  const common = texts().common;
   const names = new Map(data.customers.map((c) => [c.id, c]));
   const firstName = (id?: number) => names.get(id ?? -1)?.firstName || customerName(names.get(id ?? -1));
   const items: TimelineItem[] = [];
@@ -92,15 +91,15 @@ export function buildTimeline(data: FolderData, today: string): TimelineItem[] {
     date: data.folder.openingDate ?? '',
     category: 'opening',
     letter: 'O',
-    title: 'Ouverture du dossier',
+    title: t.opening,
     sub: [
-      data.folder.type === 'TUTELAGE' ? 'Tutelle' : 'Facturation',
-      data.folder.handledBy ? 'géré par ' + data.folder.handledBy : '',
-      data.customers.length + (data.customers.length > 1 ? ' clients' : ' client'),
+      data.folder.type === 'TUTELAGE' ? common.tutelage : common.invoicing,
+      data.folder.handledBy ? common.handledBy(data.folder.handledBy) : '',
+      t.clients(data.customers.length),
     ].filter(Boolean).join(' · '),
     amount: null,
     minutes: 0,
-    status: 'ouvert',
+    status: t.opened,
     tone: 'neutral',
     effects: [],
   });
@@ -114,18 +113,18 @@ export function buildTimeline(data: FolderData, today: string): TimelineItem[] {
       date: h.date ?? '',
       category: 'session',
       letter: 'S',
-      title: h.description || 'Séance',
+      title: h.description || t.session,
       sub: [
         h.minutes ? `${h.minutes} min · ${formatChf(h.hourlyRate)}/h` : '',
-        expenses ? 'frais ' + formatChf(fromCents(expenses)) : '',
+        expenses ? t.expenses(formatChf(fromCents(expenses))) : '',
       ].filter(Boolean).join(' · '),
       amount: h.amount ?? 0,
       minutes: h.minutes ?? 0,
-      status: invoiced ? 'facturée' : 'à facturer',
+      status: invoiced ? t.invoiced : t.toInvoice,
       tone: invoiced ? 'neutral' : 'open',
       effects: invoiced
-        ? [{ text: 'sur ' + invoiceRef(h.invoiceId), tone: 'neutral' }]
-        : [{ text: '+' + formatChf(h.amount) + ' à facturer', tone: 'up' }],
+        ? [{ text: t.onInvoice(invoiceRef(h.invoiceId)), tone: 'neutral' }]
+        : [{ text: t.plusToInvoice(formatChf(h.amount)), tone: 'up' }],
     });
   }
 
@@ -138,16 +137,16 @@ export function buildTimeline(data: FolderData, today: string): TimelineItem[] {
       date: inv.date ?? '',
       category: 'billing',
       letter: 'F',
-      title: 'Facture ' + ref,
-      sub: [sharesText(inv.shares, firstName), inv.dueDate ? 'échéance ' + formatDate(inv.dueDate) : ''].filter(Boolean).join(' · '),
+      title: t.invoice(ref),
+      sub: [sharesText(inv.shares, firstName), inv.dueDate ? t.due(formatDate(inv.dueDate)) : ''].filter(Boolean).join(' · '),
       amount: inv.amount ?? 0,
       minutes: 0,
       status: state.status,
       tone: state.tone,
       effects: [
-        { text: '−' + formatChf(inv.honorariesSum) + ' à facturer', tone: 'down' as EffectTone },
-        ...(toCents(inv.advancedSum) > 0 ? [{ text: '−' + formatChf(inv.advancedSum) + ' provisions', tone: 'neutral' as EffectTone }] : []),
-        { text: '+' + formatChf(inv.amount) + ' dû', tone: 'up' as EffectTone },
+        { text: t.minusToInvoice(formatChf(inv.honorariesSum)), tone: 'down' as EffectTone },
+        ...(toCents(inv.advancedSum) > 0 ? [{ text: t.minusAdvances(formatChf(inv.advancedSum)), tone: 'neutral' as EffectTone }] : []),
+        { text: t.plusDue(formatChf(inv.amount)), tone: 'up' as EffectTone },
       ],
     });
     for (const p of inv.payments ?? []) {
@@ -160,11 +159,11 @@ export function buildTimeline(data: FolderData, today: string): TimelineItem[] {
         date: r.date ?? '',
         category: 'billing',
         letter: 'R',
-        title: `Rappel n° ${r.degree} · ${ref}`,
-        sub: 'réclame ' + formatChf(r.amount),
+        title: t.recall(r.degree, ref),
+        sub: t.claims(formatChf(r.amount)),
         amount: r.amount ?? 0,
         minutes: 0,
-        status: 'envoyé',
+        status: t.sent,
         tone: 'late',
         effects: [],
       });
@@ -181,13 +180,13 @@ export function buildTimeline(data: FolderData, today: string): TimelineItem[] {
       date: req.date ?? '',
       category: 'billing',
       letter: 'P',
-      title: 'Demande de provision ' + ref,
-      sub: [sharesText(req.shares, firstName), req.dueDate ? 'échéance ' + formatDate(req.dueDate) : ''].filter(Boolean).join(' · '),
+      title: t.request(ref),
+      sub: [sharesText(req.shares, firstName), req.dueDate ? t.due(formatDate(req.dueDate)) : ''].filter(Boolean).join(' · '),
       amount: req.amount ?? 0,
       minutes: 0,
       status: state.status,
       tone: state.tone,
-      effects: [{ text: formatChf(req.amount) + ' demandés' + (who.length ? ' à ' + joinNames(who) : ''), tone: 'neutral' }],
+      effects: [{ text: t.requested(formatChf(req.amount), joinNames(who)), tone: 'neutral' }],
     });
     for (const r of req.recalls ?? []) {
       items.push({
@@ -196,11 +195,11 @@ export function buildTimeline(data: FolderData, today: string): TimelineItem[] {
         date: r.date ?? '',
         category: 'billing',
         letter: 'R',
-        title: `Rappel n° ${r.degree} · ${ref}`,
-        sub: 'réclame ' + formatChf(r.amount),
+        title: t.recall(r.degree, ref),
+        sub: t.claims(formatChf(r.amount)),
         amount: r.amount ?? 0,
         minutes: 0,
-        status: 'envoyé',
+        status: t.sent,
         tone: 'late',
         effects: [],
       });
@@ -215,15 +214,15 @@ export function buildTimeline(data: FolderData, today: string): TimelineItem[] {
       date: a.date ?? '',
       category: 'cash',
       letter: 'A',
-      title: 'Avance reçue · ' + customerName(names.get(a.customerId ?? -1)),
-      sub: meansText(a) + (a.requestId ? ' · répond à ' + requestRef(a.requestId) : ' · spontanée'),
+      title: t.advance(customerName(names.get(a.customerId ?? -1))),
+      sub: meansText(a) + ' · ' + (a.requestId ? t.answers(requestRef(a.requestId)) : t.spontaneous),
       amount: a.amount ?? 0,
       minutes: 0,
-      status: deducted ? 'déduite' : 'disponible',
+      status: deducted ? t.deducted : t.available,
       tone: deducted ? 'neutral' : 'done',
       effects: deducted
-        ? [{ text: 'déduite sur ' + invoiceRef(a.invoiceId), tone: 'neutral' }]
-        : [{ text: '+' + formatChf(a.amount) + ' provision disponible', tone: 'down' }],
+        ? [{ text: t.deductedOn(invoiceRef(a.invoiceId)), tone: 'neutral' }]
+        : [{ text: t.plusAdvance(formatChf(a.amount)), tone: 'down' }],
     });
   }
 
@@ -233,19 +232,20 @@ export function buildTimeline(data: FolderData, today: string): TimelineItem[] {
 }
 
 function paymentItem(p: InvoicePayment, inv: Invoice, names: Map<number, Customer>): TimelineItem {
+  const t = texts().folder.timeline;
   return {
     key: 'fp' + p.id,
     ref: { kind: 'payment', id: p.id ?? 0, invoiceId: inv.id },
     date: p.date ?? '',
     category: 'cash',
     letter: '€',
-    title: 'Paiement reçu · ' + customerName(names.get(p.customerId ?? -1)),
+    title: t.payment(customerName(names.get(p.customerId ?? -1))),
     sub: meansText(p) + ' · ' + invoiceRef(inv.id),
     amount: p.amount ?? 0,
     minutes: 0,
-    status: 'reçu',
+    status: t.received,
     tone: 'done',
-    effects: [{ text: '−' + formatChf(p.amount) + ' sur ' + invoiceRef(inv.id), tone: 'down' }],
+    effects: [{ text: t.minusOn(formatChf(p.amount), invoiceRef(inv.id)), tone: 'down' }],
   };
 }
 
@@ -259,15 +259,16 @@ interface Payable {
 
 /** Status of an invoice or a request: paid, partly paid, overdue or open. */
 export function documentState(doc: Payable, today: string): { status: string; tone: Tone } {
+  const t = texts().folder.timeline;
   if (doc.paid) {
-    return { status: doc.paidOn ? 'payée le ' + formatDate(doc.paidOn, false) : 'payée', tone: 'done' };
+    return { status: doc.paidOn ? t.paidOn(formatDate(doc.paidOn, false)) : t.paid, tone: 'done' };
   }
   const overdue = !!doc.dueDate && doc.dueDate < today;
   const remaining = toCents(doc.remainingSum ?? doc.amount);
   if (remaining < toCents(doc.amount)) {
-    return { status: 'partiellement payée', tone: overdue ? 'late' : 'open' };
+    return { status: t.partly, tone: overdue ? 'late' : 'open' };
   }
-  return overdue ? { status: 'échue', tone: 'late' } : { status: 'ouverte', tone: 'open' };
+  return overdue ? { status: t.overdue, tone: 'late' } : { status: t.open, tone: 'open' };
 }
 
 function sharesText(shares: CustomerShare[] | undefined, firstName: (id?: number) => string): string {
@@ -279,11 +280,12 @@ function sharesText(shares: CustomerShare[] | undefined, firstName: (id?: number
 }
 
 function joinNames(names: string[]): string {
-  return names.length <= 1 ? names.join('') : names.slice(0, -1).join(', ') + ' et ' + names[names.length - 1];
+  return names.length <= 1 ? names.join('') : names.slice(0, -1).join(', ') + texts().folder.timeline.and + names[names.length - 1];
 }
 
 /** Items grouped by month, the most recent month first, with what was billed and cashed in it. */
 export function groupByMonth(items: TimelineItem[]): MonthGroup[] {
+  const t = texts().folder.timeline;
   const groups = new Map<string, TimelineItem[]>();
   for (const item of items) {
     const key = item.date.slice(0, 7);
@@ -297,12 +299,12 @@ export function groupByMonth(items: TimelineItem[]): MonthGroup[] {
     const [year, month] = key.split('-');
     const parts = [];
     if (sessions.length) {
-      parts.push(`${sessions.length} séance${sessions.length > 1 ? 's' : ''} · ${formatMinutes(minutes)} · ${formatChf(fromCents(billed))} d’honoraires`);
+      parts.push(t.monthSessions(sessions.length, formatMinutes(minutes), formatChf(fromCents(billed))));
     }
     if (cashed) {
-      parts.push('encaissé ' + formatChf(fromCents(cashed)));
+      parts.push(t.monthCashed(formatChf(fromCents(cashed))));
     }
-    return { key, label: `${MONTHS[Number(month) - 1] ?? ''} ${year}`, summary: parts.join(' · '), items: list };
+    return { key, label: `${monthNames()[Number(month) - 1] ?? ''} ${year}`, summary: parts.join(' · '), items: list };
   });
 }
 

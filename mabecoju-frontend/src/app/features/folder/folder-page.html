@@ -1,14 +1,14 @@
-<a routerLink="/a-traiter" class="back">← À traiter</a>
+<a routerLink="/a-traiter" class="back">{{ tx().common.backToTodo }}</a>
 @switch (state().state) {
   @case ('loading') {
-    <p class="muted">Chargement du dossier…</p>
+    <p class="muted">{{ tx().folder.page.loading }}</p>
   }
   @case ('missing') {
-    <h1>Dossier introuvable</h1>
-    <p class="muted">Le dossier n° {{ id() }} n’existe pas ou plus.</p>
+    <h1>{{ tx().folder.page.missing }}</h1>
+    <p class="muted">{{ tx().folder.page.missingText(id()) }}</p>
   }
   @case ('error') {
-    <p class="problem">Le dossier n’a pas pu être chargé.</p>
+    <p class="problem">{{ tx().folder.page.failed }}</p>
   }
   @case ('ready') {
     @if (data(); as d) {
@@ -17,39 +17,39 @@
           <div class="title">
             <h1>{{ d.folder.name }}</h1>
             <span class="mono muted">#{{ d.folder.number ?? d.folder.id }}</span>
-            <span class="pill">{{ d.folder.type === 'TUTELAGE' ? 'Tutelle' : 'Facturation' }}</span>
+            <span class="pill">{{ d.folder.type === 'TUTELAGE' ? tx().common.tutelage : tx().common.invoicing }}</span>
             @if (d.folder.status) {
               <span class="pill neutral">{{ d.folder.status }}</span>
             }
             @if (refreshing()) {
-              <span class="muted small" role="status">mise à jour…</span>
+              <span class="muted small" role="status">{{ tx().folder.page.refreshing }}</span>
             }
           </div>
           <p class="muted meta">
-            Ouvert le {{ d.folder.openingDate | swissDate }}
+            {{ tx().folder.page.opened(d.folder.openingDate | swissDate) }}
             @if (d.folder.handledBy) {
-              · géré par {{ d.folder.handledBy }}
+              · {{ tx().common.handledBy(d.folder.handledBy) }}
             }
             @if (d.folder.firstDate) {
-              · 1re séance le {{ d.folder.firstDate | swissDate }}
+              · {{ tx().folder.page.firstSession(d.folder.firstDate | swissDate) }}
             }
           </p>
         </div>
         <div class="buttons">
           @if (can.folder) {
-            <button type="button" class="btn" [class.on]="panel() === 'folder'" (click)="open('folder')">Modifier</button>
+            <button type="button" class="btn" [class.on]="panel() === 'folder'" (click)="open('folder')">{{ tx().folder.page.edit }}</button>
           }
           @if (can.session) {
-            <button type="button" class="btn" (click)="addSession()">+ Séance</button>
+            <button type="button" class="btn" (click)="addSession()">{{ tx().folder.page.addSession }}</button>
           }
           @if (can.request) {
-            <button type="button" class="btn" [class.on]="panel() === 'request'" (click)="open('request')">+ Provision</button>
+            <button type="button" class="btn" [class.on]="panel() === 'request'" (click)="open('request')">{{ tx().folder.page.addRequest }}</button>
           }
           @if (can.payment) {
-            <button type="button" class="btn" [class.on]="panel() === 'payment'" (click)="open('payment')">+ Paiement</button>
+            <button type="button" class="btn" [class.on]="panel() === 'payment'" (click)="open('payment')">{{ tx().folder.page.addPayment }}</button>
           }
           @if (can.invoice) {
-            <button type="button" class="btn btn-primary" (click)="open('invoice')">Facturer</button>
+            <button type="button" class="btn btn-primary" (click)="open('invoice')">{{ tx().folder.page.invoice }}</button>
           }
         </div>
       </div>
@@ -57,24 +57,24 @@
       @if (figures(); as f) {
         <div class="tiles">
           <div class="tile">
-            <span class="label">À facturer</span>
+            <span class="label">{{ tx().folder.page.toInvoice }}</span>
             <span class="value">{{ f.toInvoice | chf }}</span>
-            <span class="note">{{ f.openSessions }} séance{{ f.openSessions > 1 ? 's' : '' }} ouverte{{ f.openSessions > 1 ? 's' : '' }}</span>
+            <span class="note">{{ tx().folder.page.openSessions(f.openSessions) }}</span>
           </div>
           <div class="tile">
-            <span class="label">Provisions disponibles</span>
+            <span class="label">{{ tx().folder.page.available }}</span>
             <span class="value">{{ f.available | chf }}</span>
-            <span class="note">déduites à la prochaine facture</span>
+            <span class="note">{{ tx().folder.page.availableNote }}</span>
           </div>
           <div class="tile">
-            <span class="label">Non couvert</span>
+            <span class="label">{{ tx().folder.page.uncovered }}</span>
             <span class="value accent">{{ f.uncovered | chf }}</span>
-            <span class="note">à facturer − provisions</span>
+            <span class="note">{{ tx().folder.page.uncoveredNote }}</span>
           </div>
           <div class="tile">
-            <span class="label">Dû par les clients</span>
+            <span class="label">{{ tx().folder.page.due }}</span>
             <span class="value" [class.warn]="f.dueTotal > 0">{{ f.dueTotal | chf }}</span>
-            <span class="note">{{ f.dueTotal > 0 ? 'factures et provisions ouvertes' : 'rien d’ouvert' }}</span>
+            <span class="note">{{ f.dueTotal > 0 ? tx().folder.page.dueOpen : tx().folder.page.dueNone }}</span>
           </div>
         </div>
       }
@@ -91,19 +91,19 @@
           [canRecord]="can.session"
           (selectItem)="select($event)"
         />
-        <aside #side class="side" aria-label="Détail et actions">
+        <aside #side class="side" [attr.aria-label]="tx().folder.page.side">
           @switch (panel()) {
             @case ('invoice') {
               <mbj-invoice-composer
                 [folderId]="d.folder.id"
-                (issued)="afterChange('f' + $event, 'Facture émise : choisissez le modèle et ouvrez le PDF.')"
+                (issued)="afterChange('f' + $event, tx().folder.page.invoiceIssued)"
                 (cancelled)="panel.set(null)"
               />
             }
             @case ('request') {
               <mbj-request-composer
                 [folderId]="d.folder.id"
-                (created)="afterChange('p' + $event, 'Demande enregistrée : choisissez le modèle et ouvrez le PDF.')"
+                (created)="afterChange('p' + $event, tx().folder.page.requestCreated)"
                 (cancelled)="panel.set(null)"
               />
             }
@@ -112,14 +112,14 @@
                 <mbj-payment-composer
                   [folderId]="d.folder.id"
                   [dues]="f.dues"
-                  (recorded)="afterChange(null, 'Paiement enregistré.')"
+                  (recorded)="afterChange(null, tx().folder.page.paymentRecorded)"
                   (changed)="reloadOnly()"
                   (cancelled)="panel.set(null)"
                 />
               }
             }
             @case ('folder') {
-              <mbj-folder-editor [folder]="d.folder" [canDelete]="can.folder" (saved)="afterChange(null, 'Dossier enregistré.')" (deleted)="folderDeleted()" (closed)="panel.set(null)" />
+              <mbj-folder-editor [folder]="d.folder" [canDelete]="can.folder" (saved)="afterChange(null, tx().folder.page.folderSaved)" (deleted)="folderDeleted()" (closed)="panel.set(null)" />
             }
             @case ('customer') {
               <mbj-customer-editor

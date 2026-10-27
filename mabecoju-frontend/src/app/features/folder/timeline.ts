@@ -4,17 +4,13 @@ import { HonorariesService } from '../../api/generated';
 import { ChfPipe, SwissDatePipe } from '../../shared/format';
 import { fromCents, toCents, todayIso } from '../../shared/money';
 import { problemMessage } from '../../shared/problem';
+import { texts } from '../../i18n/i18n';
 import { FolderStore } from './folder-store';
 import { Category, groupByMonth, TimelineItem } from './timeline.model';
 
 type Filter = 'all' | Category;
 
-const FILTERS: { value: Filter; label: string }[] = [
-  { value: 'all', label: 'Tout' },
-  { value: 'session', label: 'Séances' },
-  { value: 'billing', label: 'Factures & provisions' },
-  { value: 'cash', label: 'Encaissements' },
-];
+const FILTERS: Filter[] = ['all', 'session', 'billing', 'cash'];
 
 /** The folder's events month by month, with a quick entry of a session. */
 @Component({
@@ -35,6 +31,7 @@ export class Timeline {
 
   private readonly minutesInput = viewChild<ElementRef<HTMLInputElement>>('minutesInput');
 
+  protected readonly tx = texts;
   protected readonly filters = FILTERS;
   protected readonly filter = signal<Filter>('all');
   protected readonly months = computed(() => {
@@ -45,12 +42,12 @@ export class Timeline {
   // quick entry of a session
   protected readonly wordings = computed(() => {
     const list = this.store.wordings().map((w) => w.text ?? '').filter(Boolean);
-    return list.length ? list : ['Séance de médiation', 'Entretien téléphonique', 'Correspondance'];
+    return list.length ? list : texts().folder.quick.defaultWordings;
   });
   protected readonly settings = this.store.settings;
   protected date = todayIso();
   protected minutes = 60;
-  protected readonly description = signal('Séance de médiation');
+  protected readonly description = signal(texts().folder.quick.defaultWordings[0]);
   /** 'meeting' or 'standard' tariff; follows the wording until chosen by hand. */
   protected readonly tariff = signal<'meeting' | 'standard'>('meeting');
   protected readonly minutesValue = signal(60);
@@ -72,7 +69,7 @@ export class Timeline {
 
   protected onDescription(text: string): void {
     this.description.set(text);
-    this.tariff.set(/séance/i.test(text) ? 'meeting' : 'standard');
+    this.tariff.set(/séance|session/i.test(text) ? 'meeting' : 'standard');
   }
 
   protected onMinutes(value: number | null): void {
@@ -101,11 +98,11 @@ export class Timeline {
         next: async (honorary) => {
           await this.store.reload();
           this.saving.set(false);
-          this.saved.set(`${honorary.description ?? 'Séance'} du ${honorary.date?.split('-').reverse().join('.')} ajoutée.`);
+          this.saved.set(texts().folder.quick.added(honorary.description ?? texts().folder.timeline.session, honorary.date?.split('-').reverse().join('.') ?? ''));
         },
         error: (e: unknown) => {
           this.saving.set(false);
-          this.error.set(problemMessage(e, 'La séance n’a pas pu être enregistrée.'));
+          this.error.set(problemMessage(e, texts().folder.quick.failed));
         },
       });
   }

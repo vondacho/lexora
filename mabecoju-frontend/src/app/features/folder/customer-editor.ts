@@ -3,6 +3,7 @@ import { firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { Customer, CustomerInput, CustomersService } from '../../api/generated';
 import { problemMessage } from '../../shared/problem';
+import { texts } from '../../i18n/i18n';
 import { todayIso } from '../../shared/money';
 import { cleaned, CustomerFields, hasName } from '../folders/folder-fields';
 import { customerName } from './timeline.model';
@@ -14,8 +15,8 @@ import { customerName } from './timeline.model';
   template: `
     <section class="card composer" aria-labelledby="customer-edit-title">
       <div class="composer-head">
-        <h2 id="customer-edit-title">{{ customer() ? 'Modifier ' + name(customer()!) : 'Nouveau client' }}</h2>
-        <button type="button" class="btn btn-small" (click)="closed.emit()">Fermer</button>
+        <h2 id="customer-edit-title">{{ customer() ? tx().folder.customerEditor.editWho(name(customer()!)) : tx().folder.customerEditor.new }}</h2>
+        <button type="button" class="btn btn-small" (click)="closed.emit()">{{ tx().common.close }}</button>
       </div>
       <form (ngSubmit)="save()">
         <mbj-customer-fields [value]="draft" [full]="true" prefix="edit-customer" />
@@ -23,15 +24,15 @@ import { customerName } from './timeline.model';
           <p class="problem" role="alert">{{ message }}</p>
         }
         <div class="actions">
-          <button type="submit" class="btn btn-primary" [disabled]="busy() || !canSave()">{{ busy() ? 'Enregistrement…' : customer() ? 'Enregistrer' : 'Ajouter le client' }}</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy() || !canSave()">{{ busy() ? tx().common.saving : customer() ? tx().common.save : tx().folder.customerEditor.add }}</button>
           @if (customer() && canModify() && !draft.activeUntil) {
-            <button type="button" class="btn" [disabled]="busy()" (click)="endMandate()">Fin de mandat aujourd’hui</button>
+            <button type="button" class="btn" [disabled]="busy()" (click)="endMandate()">{{ tx().folder.customerEditor.endMandate }}</button>
           }
           @if (customer() && canModify()) {
-            <button type="button" class="btn btn-warn" [disabled]="busy()" (click)="remove()">{{ confirming() ? 'Confirmer la suppression' : 'Supprimer' }}</button>
+            <button type="button" class="btn btn-warn" [disabled]="busy()" (click)="remove()">{{ confirming() ? tx().folder.customerEditor.confirmDelete : tx().common.delete }}</button>
           }
         </div>
-        <p class="note muted">Un client qui a des factures, demandes ou paiements ne se supprime pas : terminez son mandat. Les lettres ne vont qu’aux clients actifs à la date du document.</p>
+        <p class="note muted">{{ tx().folder.customerEditor.note }}</p>
       </form>
     </section>
   `,
@@ -49,6 +50,7 @@ export class CustomerEditor {
   readonly saved = output<string>();
   readonly closed = output<void>();
 
+  protected readonly tx = texts;
   protected draft: CustomerInput = {};
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -77,17 +79,17 @@ export class CustomerEditor {
 
   protected async save(): Promise<void> {
     if (!hasName(this.draft)) {
-      this.error.set('Indiquez au moins le prénom ou le nom.');
+      this.error.set(texts().folder.customerEditor.nameMissing);
       return;
     }
     const existing = this.customer();
     await this.run(async () => {
       if (existing) {
         await firstValueFrom(this.customers.updateCustomer({ id: existing.id, customerInput: cleaned(this.draft) }));
-        this.saved.emit('Client enregistré.');
+        this.saved.emit(texts().folder.customerEditor.saved);
       } else {
         await firstValueFrom(this.customers.addCustomer({ folderId: this.folderId(), customerInput: cleaned(this.draft) }));
-        this.saved.emit('Client ajouté.');
+        this.saved.emit(texts().folder.customerEditor.added);
       }
     });
   }
@@ -107,7 +109,7 @@ export class CustomerEditor {
     this.confirming.set(false);
     await this.run(async () => {
       await firstValueFrom(this.customers.removeCustomer({ id: existing.id }), { defaultValue: null });
-      this.saved.emit('Client supprimé.');
+      this.saved.emit(texts().folder.customerEditor.removed);
     });
   }
 

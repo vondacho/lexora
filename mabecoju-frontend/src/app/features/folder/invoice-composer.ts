@@ -6,6 +6,7 @@ import { InvoiceDraft, InvoicesService } from '../../api/generated';
 import { ChfPipe, SwissDatePipe } from '../../shared/format';
 import { fromCents, toCents, todayIso, vatCents } from '../../shared/money';
 import { problemMessage } from '../../shared/problem';
+import { texts } from '../../i18n/i18n';
 import { loadable, Loadable } from '../home/home.model';
 import { customerName } from './timeline.model';
 import { distribute, toShares } from './shares';
@@ -17,20 +18,20 @@ import { distribute, toShares } from './shares';
   template: `
     <section class="card composer" aria-labelledby="invoice-title">
       <div class="composer-head">
-        <h2 id="invoice-title">Nouvelle facture</h2>
-        <button type="button" class="btn btn-small" (click)="cancelled.emit()">Annuler</button>
+        <h2 id="invoice-title">{{ tx().folder.invoice.title }}</h2>
+        <button type="button" class="btn btn-small" (click)="cancelled.emit()">{{ tx().common.cancel }}</button>
       </div>
       @switch (draft().state) {
         @case ('loading') {
-          <p class="muted">Préparation…</p>
+          <p class="muted">{{ tx().folder.compose.preparing }}</p>
         }
         @case ('error') {
-          <p class="problem">La facture n’a pas pu être préparée.</p>
+          <p class="problem">{{ tx().folder.invoice.failedPrepare }}</p>
         }
         @case ('ready') {
           @if (ready(); as d) {
             @if (!(d.honoraries?.length) && !(d.advances?.length)) {
-              <p class="muted">Rien à facturer : aucune séance ouverte ni provision disponible.</p>
+              <p class="muted">{{ tx().folder.invoice.nothing }}</p>
             } @else {
               <table class="lines">
                 <tbody>
@@ -40,26 +41,26 @@ import { distribute, toShares } from './shares';
                       <td class="mono">{{ h.amount | chf }}</td>
                     </tr>
                   }
-                  <tr class="sum"><td>Honoraires</td><td class="mono">{{ d.honorariesSum | chf }}</td></tr>
-                  <tr><td>TVA {{ taxRate() }} %</td><td class="mono">{{ tax() | chf }}</td></tr>
+                  <tr class="sum"><td>{{ tx().folder.invoice.honoraries }}</td><td class="mono">{{ d.honorariesSum | chf }}</td></tr>
+                  <tr><td>{{ tx().folder.invoice.vat(taxRate()) }}</td><td class="mono">{{ tax() | chf }}</td></tr>
                   @if (advanced() > 0) {
-                    <tr><td>Provisions déduites ({{ d.advances?.length }})</td><td class="mono">− {{ advanced() | chf }}</td></tr>
+                    <tr><td>{{ tx().folder.invoice.advances(d.advances?.length ?? 0) }}</td><td class="mono">− {{ advanced() | chf }}</td></tr>
                   }
-                  <tr class="total"><td>Solde à payer</td><td class="mono">{{ net() | chf }}</td></tr>
+                  <tr class="total"><td>{{ tx().folder.invoice.balance }}</td><td class="mono">{{ net() | chf }}</td></tr>
                 </tbody>
               </table>
 
               <div class="terms">
                 <div class="field">
-                  <label for="inv-date">Date</label>
+                  <label for="inv-date">{{ tx().folder.compose.date }}</label>
                   <input id="inv-date" type="date" class="input" [(ngModel)]="date" />
                 </div>
                 <div class="field">
-                  <label for="inv-delay">Délai (jours)</label>
+                  <label for="inv-delay">{{ tx().folder.compose.delay }}</label>
                   <input id="inv-delay" type="number" min="0" max="127" class="input" [(ngModel)]="delay" />
                 </div>
                 <div class="field">
-                  <label for="inv-tax">TVA (%)</label>
+                  <label for="inv-tax">{{ tx().folder.invoice.vatRate }}</label>
                   <input id="inv-tax" type="number" min="0" step="0.1" class="input" [ngModel]="taxRate()" (ngModelChange)="taxRate.set($event ?? 0)" />
                 </div>
               </div>
@@ -67,32 +68,32 @@ import { distribute, toShares } from './shares';
               @if (customers().length > 1 && !hasBilling()) {
                 <div class="split">
                   @if (customers().length === 2) {
-                    <label for="split">Répartition entre les clients</label>
-                    <input id="split" type="range" min="0" max="100" step="5" [ngModel]="split()" (ngModelChange)="split.set(+$event)" [attr.aria-valuetext]="split() + ' % pour ' + firstName(0)" />
+                    <label for="split">{{ tx().folder.invoice.split }}</label>
+                    <input id="split" type="range" min="0" max="100" step="5" [ngModel]="split()" (ngModelChange)="split.set(+$event)" [attr.aria-valuetext]="tx().folder.invoice.splitValue(split(), firstName(0))" />
                     <div class="presets">
                       <button type="button" class="chip" (click)="split.set(50)">50 / 50</button>
-                      <button type="button" class="chip" (click)="split.set(100)">{{ firstName(0) }} paie tout</button>
-                      <button type="button" class="chip" (click)="split.set(0)">{{ firstName(1) }} paie tout</button>
+                      <button type="button" class="chip" (click)="split.set(100)">{{ tx().folder.invoice.paysAll(firstName(0)) }}</button>
+                      <button type="button" class="chip" (click)="split.set(0)">{{ tx().folder.invoice.paysAll(firstName(1)) }}</button>
                     </div>
                   } @else {
-                    <p class="muted">Parts égales entre les {{ customers().length }} clients.</p>
+                    <p class="muted">{{ tx().folder.invoice.equalShares(customers().length) }}</p>
                   }
                 </div>
               }
               <div class="shares">
                 @for (s of shares(); track s.customer.id) {
                   <div class="share">
-                    <span class="muted">{{ name(s.customer) }}{{ s.customer.billing ? ' · paie tout' : '' }}</span>
+                    <span class="muted">{{ name(s.customer) }}{{ s.customer.billing ? tx().folder.compose.paysAll : '' }}</span>
                     <span class="mono">{{ s.cents / 100 | chf }}</span>
                   </div>
                 }
               </div>
-              <p class="note muted">Parts arrondies à 5 centimes. La facture s’imprime ensuite depuis le fil du dossier.</p>
+              <p class="note muted">{{ tx().folder.invoice.note }}</p>
               @if (error(); as message) {
                 <p class="problem" role="alert">{{ message }}</p>
               }
               <button type="button" class="btn btn-primary wide" [disabled]="busy()" (click)="issue()">
-                {{ busy() ? 'Émission…' : 'Émettre la facture de ' + (net() | chf) }}
+                {{ busy() ? tx().folder.invoice.issuing : tx().folder.invoice.issue(net() | chf) }}
               </button>
             }
           }
@@ -118,6 +119,7 @@ export class InvoiceComposer {
     return d.state === 'ready' ? d.value : null;
   });
 
+  protected readonly tx = texts;
   protected date = todayIso();
   protected delay = 30;
   protected readonly taxRate = signal(8.1);
@@ -173,7 +175,7 @@ export class InvoiceComposer {
         next: (invoice) => this.issued.emit(invoice.id),
         error: (e: unknown) => {
           this.busy.set(false);
-          this.error.set(problemMessage(e, 'La facture n’a pas pu être émise.'));
+          this.error.set(problemMessage(e, texts().folder.invoice.failed));
         },
       });
   }

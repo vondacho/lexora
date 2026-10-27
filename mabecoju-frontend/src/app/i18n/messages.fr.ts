@@ -1,4 +1,5 @@
 import { commonFr } from './common.i18n';
+import { folderFr } from '../features/folder/folder.i18n';
 import { homeFr } from '../features/home/home.i18n';
 import { shellFr } from '../shell/shell.i18n';
 import { loginFr } from '../features/login/login.i18n';
@@ -9,6 +10,7 @@ export const fr = {
   shell: shellFr,
   login: loginFr,
   home: homeFr,
+  folder: folderFr,
 };
 
 export type Messages = typeof fr;

@@ -1,6 +1,7 @@
 import { Component, input, output } from '@angular/core';
 import { Customer } from '../../api/generated';
 import { ChfPipe, SwissDatePipe } from '../../shared/format';
+import { texts } from '../../i18n/i18n';
 import { CustomerDue, customerName } from './timeline.model';
 
 @Component({
@@ -9,9 +10,9 @@ import { CustomerDue, customerName } from './timeline.model';
   template: `
     <section class="card" aria-labelledby="clients-title">
       <div class="head">
-        <h2 id="clients-title">Clients</h2>
+        <h2 id="clients-title">{{ tx().folder.clients.title }}</h2>
         @if (canAdd()) {
-          <button type="button" class="btn btn-small" (click)="add.emit()">+ Client</button>
+          <button type="button" class="btn btn-small" (click)="add.emit()">{{ tx().folder.clients.add }}</button>
         }
       </div>
       @for (d of dues(); track d.customer.id) {
@@ -26,21 +27,21 @@ import { CustomerDue, customerName } from './timeline.model';
               <div class="muted">{{ c }}</div>
             }
             <div class="tags">
-              <span class="mono" [class.owes]="d.due > 0">{{ d.due > 0 ? 'doit ' + (d.due | chf) : 'rien d’ouvert' }}</span>
+              <span class="mono" [class.owes]="d.due > 0">{{ d.due > 0 ? tx().folder.clients.owes(d.due | chf) : tx().folder.clients.nothingOpen }}</span>
               @if (d.customer.billing) {
-                <span class="pill">paie tout</span>
+                <span class="pill">{{ tx().folder.clients.paysAll }}</span>
               }
               @if (d.customer.activeUntil) {
-                <span class="pill neutral">jusqu’au {{ d.customer.activeUntil | swissDate }}</span>
+                <span class="pill neutral">{{ tx().folder.clients.until(d.customer.activeUntil | swissDate) }}</span>
               }
               @if (canEdit()) {
-                <button type="button" class="link" (click)="edit.emit(d.customer)" [attr.aria-label]="'Modifier ' + name(d.customer)">Modifier</button>
+                <button type="button" class="link" (click)="edit.emit(d.customer)" [attr.aria-label]="tx().folder.clients.editWho(name(d.customer))">{{ tx().folder.clients.edit }}</button>
               }
             </div>
           </div>
         </div>
       } @empty {
-        <p class="muted">Aucun client dans ce dossier.</p>
+        <p class="muted">{{ tx().folder.clients.none }}</p>
       }
     </section>
   `,
@@ -64,6 +65,7 @@ export class CustomersPanel {
   readonly add = output<void>();
   readonly edit = output<Customer>();
 
+  protected readonly tx = texts;
   protected name = customerName;
   protected present = (x: unknown) => !!x;
 

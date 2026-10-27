@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { catchError, firstValueFrom, of } from 'rxjs';
 import { Folder, FolderInput, FoldersService, FolderStatus } from '../../api/generated';
 import { problemMessage } from '../../shared/problem';
+import { texts } from '../../i18n/i18n';
 import { cleaned, FolderFields } from '../folders/folder-fields';
 
 /** "Modifier le dossier": its details, and its deletion with everything it holds. */
@@ -12,8 +13,8 @@ import { cleaned, FolderFields } from '../folders/folder-fields';
   template: `
     <section class="card composer" aria-labelledby="folder-edit-title">
       <div class="composer-head">
-        <h2 id="folder-edit-title">Modifier le dossier</h2>
-        <button type="button" class="btn btn-small" (click)="closed.emit()">Fermer</button>
+        <h2 id="folder-edit-title">{{ tx().folder.folderEditor.title }}</h2>
+        <button type="button" class="btn btn-small" (click)="closed.emit()">{{ tx().common.close }}</button>
       </div>
       <form (ngSubmit)="save()">
         <mbj-folder-fields [value]="draft" [statuses]="statuses()" prefix="edit-folder" />
@@ -21,24 +22,24 @@ import { cleaned, FolderFields } from '../folders/folder-fields';
           <p class="problem" role="alert">{{ message }}</p>
         }
         <div class="actions">
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ busy() ? 'Enregistrement…' : 'Enregistrer' }}</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ busy() ? tx().common.saving : tx().common.save }}</button>
         </div>
       </form>
       @if (canDelete()) {
         <div class="danger">
-          <span class="label">Supprimer le dossier</span>
-          <p class="note muted">Supprime aussi ses séances, factures, demandes, paiements, avances, bulletins, écritures et clients. Irréversible.</p>
+          <span class="label">{{ tx().folder.folderEditor.deleteTitle }}</span>
+          <p class="note muted">{{ tx().folder.folderEditor.deleteNote }}</p>
           @if (confirming()) {
             <div class="field">
-              <label for="confirm-name">Tapez « {{ folder().name }} » pour confirmer</label>
+              <label for="confirm-name">{{ tx().folder.folderEditor.typeToConfirm(folder().name ?? '') }}</label>
               <input id="confirm-name" class="input" autocomplete="off" [(ngModel)]="typed" />
             </div>
             <div class="actions">
-              <button type="button" class="btn" (click)="confirming.set(false)">Annuler</button>
-              <button type="button" class="btn btn-warn" [disabled]="busy() || typed.trim() !== (folder().name ?? '').trim()" (click)="remove()">Supprimer définitivement</button>
+              <button type="button" class="btn" (click)="confirming.set(false)">{{ tx().common.cancel }}</button>
+              <button type="button" class="btn btn-warn" [disabled]="busy() || typed.trim() !== (folder().name ?? '').trim()" (click)="remove()">{{ tx().folder.folderEditor.deleteForever }}</button>
             </div>
           } @else {
-            <button type="button" class="btn btn-warn" (click)="confirming.set(true)">Supprimer le dossier…</button>
+            <button type="button" class="btn btn-warn" (click)="confirming.set(true)">{{ tx().folder.folderEditor.deleteStart }}</button>
           }
         </div>
       }
@@ -60,6 +61,7 @@ export class FolderEditor {
   readonly deleted = output<void>();
   readonly closed = output<void>();
 
+  protected readonly tx = texts;
   protected draft: FolderInput = { type: 'INVOICING', name: '' };
   protected readonly statuses = signal<string[]>([]);
   protected readonly busy = signal(false);
@@ -90,7 +92,7 @@ export class FolderEditor {
 
   protected async save(): Promise<void> {
     if (!this.draft.name?.trim()) {
-      this.error.set('Indiquez le nom du dossier.');
+      this.error.set(texts().folder.folderEditor.nameMissing);
       return;
     }
     this.busy.set(true);
@@ -99,7 +101,7 @@ export class FolderEditor {
       await firstValueFrom(this.folders.updateFolder({ id: this.folder().id, folderInput: cleaned(this.draft) }));
       this.saved.emit();
     } catch (e: unknown) {
-      this.error.set(problemMessage(e, 'Le dossier n’a pas pu être enregistré.'));
+      this.error.set(problemMessage(e, texts().folder.folderEditor.saveFailed));
     } finally {
       this.busy.set(false);
     }
@@ -112,7 +114,7 @@ export class FolderEditor {
       await firstValueFrom(this.folders.deleteFolder({ id: this.folder().id }), { defaultValue: null });
       this.deleted.emit();
     } catch (e: unknown) {
-      this.error.set(problemMessage(e, 'Le dossier n’a pas pu être supprimé.'));
+      this.error.set(problemMessage(e, texts().folder.folderEditor.deleteFailed));
       this.busy.set(false);
     }
   }

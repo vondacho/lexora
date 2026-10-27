@@ -7,6 +7,7 @@ import { AuthService } from '../../core/auth.service';
 import { ChfPipe } from '../../shared/format';
 import { fromCents, toCents, todayIso } from '../../shared/money';
 import { problemMessage } from '../../shared/problem';
+import { texts } from '../../i18n/i18n';
 import { loadable, Loadable } from '../home/home.model';
 import { allocate } from './payment.model';
 import { CustomerDue, customerName } from './timeline.model';
@@ -23,79 +24,79 @@ type Means = 'cash' | 'transfer';
   template: `
     <section class="card composer" aria-labelledby="payment-title">
       <div class="composer-head">
-        <h2 id="payment-title">Recevoir un paiement</h2>
-        <button type="button" class="btn btn-small" (click)="cancelled.emit()">Annuler</button>
+        <h2 id="payment-title">{{ tx().folder.payment.title }}</h2>
+        <button type="button" class="btn btn-small" (click)="cancelled.emit()">{{ tx().common.cancel }}</button>
       </div>
-      <p class="note muted">Paiement remis en main propre ou reçu hors fichier bancaire.</p>
+      <p class="note muted">{{ tx().folder.payment.intro }}</p>
 
-      <span class="label">Payé par</span>
-      <div class="choices" role="group" aria-label="Client">
+      <span class="label">{{ tx().folder.payment.paidBy }}</span>
+      <div class="choices" role="group" [attr.aria-label]="tx().folder.payment.client">
         @for (d of dues(); track d.customer.id) {
           <button type="button" class="chip" [class.on]="customerId() === d.customer.id" [attr.aria-pressed]="customerId() === d.customer.id" (click)="pickCustomer(d.customer.id)">
-            {{ name(d.customer) }} · doit {{ d.due | chf }}
+            {{ tx().folder.payment.owes(name(d.customer), d.due | chf) }}
           </button>
         }
       </div>
 
-      <span class="label">Moyen</span>
-      <div class="choices" role="group" aria-label="Moyen de paiement">
-        <button type="button" class="chip" [class.on]="means() === 'cash'" [attr.aria-pressed]="means() === 'cash'" (click)="means.set('cash')">Comptant</button>
-        <button type="button" class="chip" [class.on]="means() === 'transfer'" [attr.aria-pressed]="means() === 'transfer'" (click)="means.set('transfer')">Virement</button>
+      <span class="label">{{ tx().folder.payment.means }}</span>
+      <div class="choices" role="group" [attr.aria-label]="tx().folder.payment.meansLabel">
+        <button type="button" class="chip" [class.on]="means() === 'cash'" [attr.aria-pressed]="means() === 'cash'" (click)="means.set('cash')">{{ tx().folder.timeline.means.cash }}</button>
+        <button type="button" class="chip" [class.on]="means() === 'transfer'" [attr.aria-pressed]="means() === 'transfer'" (click)="means.set('transfer')">{{ tx().folder.timeline.means.transfer }}</button>
       </div>
       @if (means() === 'transfer') {
         <div class="field">
-          <label for="pay-iban">IBAN du payeur (facultatif)</label>
+          <label for="pay-iban">{{ tx().folder.payment.iban }}</label>
           <input id="pay-iban" class="input mono" maxlength="34" placeholder="CH93 0076 2011 6238 5295 7" [(ngModel)]="iban" />
         </div>
       }
 
       <div class="terms">
         <div class="field">
-          <label for="pay-amount">Montant reçu</label>
+          <label for="pay-amount">{{ tx().folder.payment.amount }}</label>
           <input id="pay-amount" type="number" min="0" step="0.05" class="input" [ngModel]="amount()" (ngModelChange)="typeAmount($event)" />
         </div>
         <div class="field">
-          <label for="pay-date">Date</label>
+          <label for="pay-date">{{ tx().folder.compose.date }}</label>
           <input id="pay-date" type="date" class="input" [(ngModel)]="date" />
         </div>
       </div>
 
-      <span class="label">Imputation</span>
+      <span class="label">{{ tx().folder.payment.allocation }}</span>
       @switch (statement().state) {
         @case ('loading') {
-          <p class="note muted">Lecture de ce que doit le client…</p>
+          <p class="note muted">{{ tx().folder.payment.reading }}</p>
         }
         @case ('error') {
-          <p class="problem">Ce que doit le client n’a pas pu être lu.</p>
+          <p class="problem">{{ tx().folder.payment.readFailed }}</p>
         }
         @case ('ready') {
           <table class="lines">
             <tbody>
               @for (a of plan().allocations; track a.reference) {
                 <tr>
-                  <td>{{ a.reference }} · {{ a.kind === 'invoice' ? 'facture' : 'provision' }} · {{ a.settles ? 'soldée' : 'partiel' }}</td>
+                  <td>{{ a.reference }} · {{ a.kind === 'invoice' ? tx().folder.payment.invoice : tx().folder.payment.request }} · {{ a.settles ? tx().folder.payment.settled : tx().folder.payment.partial }}</td>
                   <td class="mono">{{ a.cents / 100 | chf }}</td>
                 </tr>
               }
               @if (plan().surplusCents > 0) {
-                <tr><td>Avance spontanée (provision)</td><td class="mono">{{ plan().surplusCents / 100 | chf }}</td></tr>
+                <tr><td>{{ tx().folder.payment.surplus }}</td><td class="mono">{{ plan().surplusCents / 100 | chf }}</td></tr>
               }
             </tbody>
           </table>
           @if (!plan().allocations.length && amount() > 0) {
-            <p class="note muted">Rien d’ouvert pour ce client : le montant devient une avance spontanée, déduite à la prochaine facture.</p>
+            <p class="note muted">{{ tx().folder.payment.nothingOpen }}</p>
           }
           @if (plan().surplusCents > 0 && !canAdvance) {
-            <p class="problem">Vos droits ne permettent pas d’enregistrer le surplus comme avance.</p>
+            <p class="problem">{{ tx().folder.payment.noAdvanceRight }}</p>
           }
-          <p class="note muted">Les documents les plus anciens sont soldés en premier ; le surplus reste en provision.</p>
+          <p class="note muted">{{ tx().folder.payment.rule }}</p>
         }
       }
       @if (error(); as message) {
         <p class="problem" role="alert">{{ message }}</p>
       }
       <button type="button" class="btn btn-primary wide" [disabled]="!canSave()" (click)="save()">
-        {{ busy() ? 'Enregistrement…' : 'Enregistrer ' + (amount() | chf) + ' · ' + (means() === 'cash' ? 'comptant' : 'virement') }}
+        {{ busy() ? tx().common.saving : tx().folder.payment.record(amount() | chf, means() === 'cash') }}
       </button>
     </section>
   `,
@@ -119,6 +120,7 @@ export class PaymentComposer {
     () => this.chosen() ?? (this.dues().find((d) => d.due > 0) ?? this.dues()[0])?.customer.id ?? null,
   );
   protected readonly means = signal<Means>('cash');
+  protected readonly tx = texts;
   protected iban = '';
   protected date = todayIso();
   private readonly typed = signal<number | null>(null);
@@ -208,9 +210,9 @@ export class PaymentComposer {
         this.changed.emit();
         this.refresh.update((n) => n + 1);
         this.typed.set(fromCents(plan.surplusCents));
-        this.error.set('Les documents sont payés, mais le surplus n’a pas pu être enregistré comme avance : ' + problemMessage(e));
+        this.error.set(texts().folder.payment.surplusFailed(problemMessage(e)));
       } else {
-        this.error.set(problemMessage(e, 'Le paiement n’a pas pu être enregistré.'));
+        this.error.set(problemMessage(e, texts().folder.payment.failed));
       }
     }
   }

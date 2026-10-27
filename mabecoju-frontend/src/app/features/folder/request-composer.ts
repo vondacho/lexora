@@ -6,6 +6,7 @@ import { AdvanceRequestDraft, AdvanceRequestsService } from '../../api/generated
 import { ChfPipe } from '../../shared/format';
 import { toCents, todayIso } from '../../shared/money';
 import { problemMessage } from '../../shared/problem';
+import { texts } from '../../i18n/i18n';
 import { loadable, Loadable } from '../home/home.model';
 import { customerName } from './timeline.model';
 import { distribute, toShares } from './shares';
@@ -17,24 +18,24 @@ import { distribute, toShares } from './shares';
   template: `
     <section class="card composer" aria-labelledby="request-title">
       <div class="composer-head">
-        <h2 id="request-title">Nouvelle demande de provision</h2>
-        <button type="button" class="btn btn-small" (click)="cancelled.emit()">Annuler</button>
+        <h2 id="request-title">{{ tx().folder.request.title }}</h2>
+        <button type="button" class="btn btn-small" (click)="cancelled.emit()">{{ tx().common.cancel }}</button>
       </div>
       @switch (draft().state) {
         @case ('loading') {
-          <p class="muted">Préparation…</p>
+          <p class="muted">{{ tx().folder.compose.preparing }}</p>
         }
         @case ('error') {
-          <p class="problem">La demande n’a pas pu être préparée.</p>
+          <p class="problem">{{ tx().folder.request.failedPrepare }}</p>
         }
         @case ('ready') {
           @if (ready(); as d) {
             <p class="note muted">
-              Honoraires ouverts {{ d.openHonorariesSum | chf }} · provisions disponibles {{ d.availableAdvancesSum | chf }} ·
-              non couvert <strong>{{ d.uncoveredHonorariesSum | chf }}</strong>
+              {{ tx().folder.request.open(d.openHonorariesSum | chf) }} · {{ tx().folder.request.available(d.availableAdvancesSum | chf) }} ·
+              {{ tx().folder.request.uncovered }} <strong>{{ d.uncoveredHonorariesSum | chf }}</strong>
             </p>
             <div class="field">
-              <label for="req-amount">Montant demandé</label>
+              <label for="req-amount">{{ tx().folder.request.amount }}</label>
               <input id="req-amount" type="number" min="0" step="50" class="input" [ngModel]="amount()" (ngModelChange)="amount.set(+$event || 0)" />
             </div>
             <div class="presets">
@@ -44,18 +45,18 @@ import { distribute, toShares } from './shares';
             </div>
             <div class="terms">
               <div class="field">
-                <label for="req-date">Date</label>
+                <label for="req-date">{{ tx().folder.compose.date }}</label>
                 <input id="req-date" type="date" class="input" [(ngModel)]="date" />
               </div>
               <div class="field">
-                <label for="req-delay">Délai (jours)</label>
+                <label for="req-delay">{{ tx().folder.compose.delay }}</label>
                 <input id="req-delay" type="number" min="0" max="127" class="input" [(ngModel)]="delay" />
               </div>
             </div>
             <div class="shares">
               @for (s of shares(); track s.customer.id) {
                 <div class="share">
-                  <span class="muted">{{ name(s.customer) }}{{ s.customer.billing ? ' · paie tout' : '' }}</span>
+                  <span class="muted">{{ name(s.customer) }}{{ s.customer.billing ? tx().folder.compose.paysAll : '' }}</span>
                   <span class="mono">{{ s.cents / 100 | chf }}</span>
                 </div>
               }
@@ -64,7 +65,7 @@ import { distribute, toShares } from './shares';
               <p class="problem" role="alert">{{ message }}</p>
             }
             <button type="button" class="btn btn-primary wide" [disabled]="busy() || amount() <= 0" (click)="create()">
-              {{ busy() ? 'Enregistrement…' : 'Demander ' + (amount() | chf) }}
+              {{ busy() ? tx().common.saving : tx().folder.request.ask(amount() | chf) }}
             </button>
           }
         }
@@ -89,6 +90,7 @@ export class RequestComposer {
     return d.state === 'ready' ? d.value : null;
   });
 
+  protected readonly tx = texts;
   protected date = todayIso();
   protected delay = 10;
   protected readonly amount = signal(0);
@@ -129,7 +131,7 @@ export class RequestComposer {
         next: (request) => this.created.emit(request.id),
         error: (e: unknown) => {
           this.busy.set(false);
-          this.error.set(problemMessage(e, 'La demande n’a pas pu être enregistrée.'));
+          this.error.set(problemMessage(e, texts().folder.request.failed));
         },
       });
   }

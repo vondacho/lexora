@@ -4,6 +4,7 @@ import { Customer } from '../../api/generated';
 import { AuthService } from '../../core/auth.service';
 import { ChfPipe, SwissDatePipe } from '../../shared/format';
 import { todayIso } from '../../shared/money';
+import { texts } from '../../i18n/i18n';
 import { CustomerEditor } from './customer-editor';
 import { CustomersPanel } from './customers-panel';
 import { FolderEditor } from './folder-editor';
@@ -36,6 +37,7 @@ export class FolderPage {
   private readonly timeline = viewChild(Timeline);
   private readonly side = viewChild<ElementRef<HTMLElement>>('side');
 
+  protected readonly tx = texts;
   protected readonly state = this.store.state;
   protected readonly refreshing = this.store.refreshing;
   protected readonly data = computed(() => {

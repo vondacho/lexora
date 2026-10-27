@@ -20,6 +20,7 @@ import { ACCEPT_PDF, openPdf } from '../../shared/download';
 import { formatChf, formatDate } from '../../shared/format';
 import { blobProblemMessage, problemMessage } from '../../shared/problem';
 import { latestRecall } from '../../shared/recalls';
+import { texts } from '../../i18n/i18n';
 import { loadable, Loadable } from '../home/home.model';
 import { customerName, FolderData, invoiceRef, meansText, requestRef, TimelineItem } from './timeline.model';
 
@@ -53,7 +54,7 @@ interface Printable {
     <section class="card detail" aria-labelledby="detail-title">
       <div class="composer-head">
         <span class="muted kind">{{ kindLabel() }} · {{ item().date ? swiss(item().date) : '' }}</span>
-        <button type="button" class="btn btn-small" (click)="closed.emit()" aria-label="Fermer le détail">Fermer</button>
+        <button type="button" class="btn btn-small" (click)="closed.emit()" [attr.aria-label]="tx().folder.detail.closeDetail">{{ tx().common.close }}</button>
       </div>
       <h2 id="detail-title">{{ item().title }}</h2>
       <dl class="facts">
@@ -65,20 +66,20 @@ interface Printable {
 
       @if (printable(); as p) {
         <div class="print">
-          <span class="label">Imprimer</span>
+          <span class="label">{{ tx().folder.detail.print }}</span>
           @switch (models().state) {
             @case ('loading') {
-              <p class="note muted">Lecture des modèles…</p>
+              <p class="note muted">{{ tx().folder.detail.readingModels }}</p>
             }
             @case ('error') {
-              <p class="problem">Les modèles de lettres n’ont pas pu être lus.</p>
+              <p class="problem">{{ tx().folder.detail.modelsFailed }}</p>
             }
             @case ('ready') {
               @if (modelList().length === 0) {
-                <p class="note muted">Aucun modèle de lettre pour ce document : créez-en un dans « Modèles de lettres ».</p>
+                <p class="note muted">{{ tx().folder.detail.noModel }}</p>
               } @else {
                 <div class="field">
-                  <label for="print-model">Modèle</label>
+                  <label for="print-model">{{ tx().folder.detail.model }}</label>
                   <select id="print-model" class="input" [ngModel]="modelId()" (ngModelChange)="chosenModel.set(+$event)">
                     @for (m of modelList(); track m.id) {
                       <option [value]="m.id">{{ m.name }}</option>
@@ -87,10 +88,10 @@ interface Printable {
                 </div>
                 <label class="check">
                   <input type="checkbox" [(ngModel)]="mergeAddresses" />
-                  Une seule lettre pour tous les clients
+                  {{ tx().folder.detail.merge }}
                 </label>
                 <button type="button" class="btn btn-primary" [disabled]="printing()" (click)="print(p)">
-                  {{ printing() ? 'Préparation du PDF…' : 'Ouvrir le PDF' }}
+                  {{ printing() ? tx().folder.detail.preparingPdf : tx().folder.detail.openPdf }}
                 </button>
               }
             }
@@ -139,6 +140,7 @@ export class ItemDetail {
   protected readonly printing = signal(false);
   protected readonly confirming = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
+  protected readonly tx = texts;
   protected mergeAddresses = false;
   protected readonly swiss = (iso: string) => formatDate(iso);
 
@@ -155,90 +157,87 @@ export class ItemDetail {
   });
 
   protected readonly kindLabel = computed(() => {
-    const labels: Record<TimelineItem['ref']['kind'], string> = {
-      opening: 'Dossier', honorary: 'Séance', invoice: 'Facture', request: 'Demande de provision', advance: 'Avance',
-      payment: 'Paiement', 'invoice-recall': 'Rappel', 'request-recall': 'Rappel',
-    };
-    return labels[this.item().ref.kind];
+    return texts().folder.detail.kinds[this.item().ref.kind];
   });
 
   protected readonly facts = computed<Fact[]>(() => {
     const data = this.data();
     const ref = this.item().ref;
-    const name = (id?: number) => this.names().get(id ?? -1) ?? 'client inconnu';
+    const t = texts().folder.detail;
+    const name = (id?: number) => this.names().get(id ?? -1) ?? texts().folder.timeline.unknownClient;
     switch (ref.kind) {
       case 'opening': {
         const f = data.folder;
         return [
-          { label: 'Numéro', value: String(f.number ?? f.id) },
-          { label: 'Type', value: f.type === 'TUTELAGE' ? 'Tutelle' : 'Facturation' },
-          { label: 'Ouvert le', value: formatDate(f.openingDate) },
-          ...(f.firstDate ? [{ label: '1re séance', value: formatDate(f.firstDate) }] : []),
-          ...(f.handledBy ? [{ label: 'Géré par', value: f.handledBy }] : []),
-          ...(f.status ? [{ label: 'Statut', value: f.status }] : []),
-          ...(f.wayToOurOffice ? [{ label: 'Venu par', value: f.wayToOurOffice }] : []),
-          ...(f.comment ? [{ label: 'Commentaire', value: f.comment }] : []),
+          { label: t.number, value: String(f.number ?? f.id) },
+          { label: t.type, value: f.type === 'TUTELAGE' ? texts().common.tutelage : texts().common.invoicing },
+          { label: t.openedOn, value: formatDate(f.openingDate) },
+          ...(f.firstDate ? [{ label: t.firstSession, value: formatDate(f.firstDate) }] : []),
+          ...(f.handledBy ? [{ label: t.handledBy, value: f.handledBy }] : []),
+          ...(f.status ? [{ label: t.status, value: f.status }] : []),
+          ...(f.wayToOurOffice ? [{ label: t.cameThrough, value: f.wayToOurOffice }] : []),
+          ...(f.comment ? [{ label: t.comment, value: f.comment }] : []),
         ];
       }
       case 'honorary': {
         const h = data.honoraries.find((x) => x.id === ref.id);
         if (!h) return [];
         return [
-          { label: 'Libellé', value: h.description ?? '' },
-          { label: 'Durée', value: (h.minutes ?? 0) + ' min' },
-          { label: 'Tarif horaire', value: formatChf(h.hourlyRate) },
-          ...(h.expenses ?? []).map((e, i) => ({ label: e.description || 'Frais ' + (i + 1), value: formatChf(e.amount) })),
-          { label: 'Montant', value: formatChf(h.amount) },
-          { label: 'Facture', value: h.invoiceId != null ? invoiceRef(h.invoiceId) : 'à facturer' },
+          { label: t.wording, value: h.description ?? '' },
+          { label: t.duration, value: (h.minutes ?? 0) + ' min' },
+          { label: t.hourlyRate, value: formatChf(h.hourlyRate) },
+          ...(h.expenses ?? []).map((e, i) => ({ label: e.description || t.expense(i + 1), value: formatChf(e.amount) })),
+          { label: t.amount, value: formatChf(h.amount) },
+          { label: t.invoice, value: h.invoiceId != null ? invoiceRef(h.invoiceId) : t.toInvoice },
         ];
       }
       case 'invoice': {
         const inv = this.invoice();
         if (!inv) return [];
         return [
-          { label: 'Échéance', value: formatDate(inv.dueDate) + ' (' + (inv.delayDays ?? 0) + ' jours)' },
-          { label: 'Honoraires', value: formatChf(inv.honorariesSum) },
-          ...((inv.discount ?? 0) > 0 ? [{ label: 'Rabais', value: '− ' + formatChf(inv.discount) }] : []),
-          { label: 'TVA ' + (inv.taxRatePercent ?? 0) + ' %', value: formatChf(inv.tax) },
-          ...((inv.advancedSum ?? 0) > 0 ? [{ label: 'Provisions déduites', value: '− ' + formatChf(inv.advancedSum) }] : []),
-          { label: 'Montant', value: formatChf(inv.amount) },
-          ...(inv.shares ?? []).map((s) => ({ label: name(s.customerId) + ', payé', value: formatChf(s.paid) + ' / ' + formatChf(s.amount) })),
-          { label: inv.paid ? 'Payée le' : 'Reste dû', value: inv.paid ? formatDate(inv.paidOn) : formatChf(inv.remainingSum) },
-          { label: 'Rappels', value: inv.recalls?.length ? String(inv.recalls.length) : 'aucun' },
+          { label: t.due, value: t.dueValue(formatDate(inv.dueDate), inv.delayDays ?? 0) },
+          { label: t.honoraries, value: formatChf(inv.honorariesSum) },
+          ...((inv.discount ?? 0) > 0 ? [{ label: t.discount, value: '− ' + formatChf(inv.discount) }] : []),
+          { label: t.vat(inv.taxRatePercent ?? 0), value: formatChf(inv.tax) },
+          ...((inv.advancedSum ?? 0) > 0 ? [{ label: t.advances, value: '− ' + formatChf(inv.advancedSum) }] : []),
+          { label: t.amount, value: formatChf(inv.amount) },
+          ...(inv.shares ?? []).map((s) => ({ label: t.paidBy(name(s.customerId)), value: formatChf(s.paid) + ' / ' + formatChf(s.amount) })),
+          { label: inv.paid ? t.paidOn : t.remaining, value: inv.paid ? formatDate(inv.paidOn) : formatChf(inv.remainingSum) },
+          { label: t.recalls, value: inv.recalls?.length ? String(inv.recalls.length) : t.none },
         ];
       }
       case 'request': {
         const req = this.request();
         if (!req) return [];
         return [
-          { label: 'Échéance', value: formatDate(req.dueDate) + ' (' + (req.delayDays ?? 0) + ' jours)' },
-          { label: 'Montant demandé', value: formatChf(req.amount) },
-          ...(req.shares ?? []).map((s) => ({ label: name(s.customerId) + ', payé', value: formatChf(s.paid) + ' / ' + formatChf(s.amount) })),
-          { label: req.paid ? 'Payée le' : 'Reste dû', value: req.paid ? formatDate(req.paidOn) : formatChf(req.remainingSum) },
-          { label: 'Rappels', value: req.recalls?.length ? String(req.recalls.length) : 'aucun' },
+          { label: t.due, value: t.dueValue(formatDate(req.dueDate), req.delayDays ?? 0) },
+          { label: t.requested, value: formatChf(req.amount) },
+          ...(req.shares ?? []).map((s) => ({ label: t.paidBy(name(s.customerId)), value: formatChf(s.paid) + ' / ' + formatChf(s.amount) })),
+          { label: req.paid ? t.paidOn : t.remaining, value: req.paid ? formatDate(req.paidOn) : formatChf(req.remainingSum) },
+          { label: t.recalls, value: req.recalls?.length ? String(req.recalls.length) : t.none },
         ];
       }
       case 'advance': {
         const a = data.advances.find((x) => x.id === ref.id);
         if (!a) return [];
         return [
-          { label: 'Client', value: name(a.customerId) },
-          { label: 'Moyen', value: meansText(a) },
+          { label: t.client, value: name(a.customerId) },
+          { label: t.means, value: meansText(a) },
           ...(a.iban ? [{ label: 'IBAN', value: a.iban }] : []),
-          { label: 'Répond à', value: a.requestId ? requestRef(a.requestId) : 'avance spontanée' },
-          { label: 'Déduite sur', value: a.invoiceId ? invoiceRef(a.invoiceId) : 'pas encore' },
-          { label: 'Montant', value: formatChf(a.amount) },
+          { label: t.answers, value: a.requestId ? requestRef(a.requestId) : t.spontaneous },
+          { label: t.deductedOn, value: a.invoiceId ? invoiceRef(a.invoiceId) : t.notYet },
+          { label: t.amount, value: formatChf(a.amount) },
         ];
       }
       case 'payment': {
         const p = this.invoice()?.payments?.find((x) => x.id === ref.id);
         if (!p) return [];
         return [
-          { label: 'Client', value: name(p.customerId) },
-          { label: 'Moyen', value: meansText(p) },
+          { label: t.client, value: name(p.customerId) },
+          { label: t.means, value: meansText(p) },
           ...(p.iban ? [{ label: 'IBAN', value: p.iban }] : []),
-          { label: 'Facture', value: invoiceRef(ref.invoiceId) },
-          { label: 'Montant', value: formatChf(p.amount) },
+          { label: t.invoice, value: invoiceRef(ref.invoiceId) },
+          { label: t.amount, value: formatChf(p.amount) },
         ];
       }
       case 'invoice-recall':
@@ -247,9 +246,9 @@ export class ItemDetail {
         const r = doc?.recalls?.find((x) => x.id === ref.id);
         if (!r) return [];
         return [
-          { label: 'Document', value: ref.kind === 'invoice-recall' ? invoiceRef(ref.invoiceId) : requestRef(ref.requestId) },
-          { label: 'Degré', value: String(r.degree ?? '') },
-          { label: 'Montant réclamé', value: formatChf(r.amount) },
+          { label: t.document, value: ref.kind === 'invoice-recall' ? invoiceRef(ref.invoiceId) : requestRef(ref.requestId) },
+          { label: t.degree, value: String(r.degree ?? '') },
+          { label: t.claimed, value: formatChf(r.amount) },
         ];
       }
     }
@@ -271,7 +270,7 @@ export class ItemDetail {
         return this.auth.hasGrant('invoicing:invoice_display')
           ? {
               type: 'RECALL',
-              fileName: `${folder}_${invoiceRef(ref.invoiceId)}_rappel.pdf`,
+              fileName: `${folder}_${invoiceRef(ref.invoiceId)}_${texts().folder.detail.recallSuffix}.pdf`,
               print: (printInput) => this.documents.printInvoiceRecall({ id: ref.invoiceId, recallId: ref.id, printInput }, 'body', false, ACCEPT_PDF),
             }
           : null;
@@ -279,7 +278,7 @@ export class ItemDetail {
         return this.auth.hasGrant('invoicing:request_display')
           ? {
               type: 'RECALL',
-              fileName: `${folder}_${requestRef(ref.requestId)}_rappel.pdf`,
+              fileName: `${folder}_${requestRef(ref.requestId)}_${texts().folder.detail.recallSuffix}.pdf`,
               print: (printInput) => this.documents.printAdvanceRequestRecall({ id: ref.requestId, recallId: ref.id, printInput }, 'body', false, ACCEPT_PDF),
             }
           : null;
@@ -306,11 +305,12 @@ export class ItemDetail {
   protected readonly actions = computed<Action[]>(() => {
     const ref = this.item().ref;
     const can = (grant: string) => this.auth.hasGrant('invoicing:' + grant);
+    const t = texts().folder.detail;
     const list: Action[] = [];
     if (ref.kind === 'honorary') {
       const h = this.data().honoraries.find((x) => x.id === ref.id);
       if (h && h.invoiceId == null && can('honorary_modify')) {
-        list.push({ id: 'delete', label: 'Supprimer la séance', confirm: 'Confirmer la suppression', danger: true, run: () => this.honoraries.deleteHonorary({ id: ref.id }), next: () => null });
+        list.push({ id: 'delete', label: t.deleteSession, confirm: t.confirmDelete, danger: true, run: () => this.honoraries.deleteHonorary({ id: ref.id }), next: () => null });
       }
     }
     if (ref.kind === 'invoice') {
@@ -319,7 +319,7 @@ export class ItemDetail {
         const degree = (inv.recalls?.length ?? 0) + 1;
         list.push({
           id: 'recall',
-          label: `Créer le rappel n° ${degree}`,
+          label: t.createRecall(degree),
           run: () => this.invoices.recallInvoice({ id: ref.id, dateInput: {} }),
           next: (result) => {
             const last = latestRecall((result as Invoice).recalls);
@@ -334,7 +334,7 @@ export class ItemDetail {
         const degree = (req.recalls?.length ?? 0) + 1;
         list.push({
           id: 'recall',
-          label: `Créer le rappel n° ${degree}`,
+          label: t.createRecall(degree),
           run: () => this.requests.recallAdvanceRequest({ id: ref.id, dateInput: {} }),
           next: (result) => {
             const last = latestRecall((result as AdvanceRequest).recalls);
@@ -346,14 +346,14 @@ export class ItemDetail {
     if (ref.kind === 'advance') {
       const a = this.data().advances.find((x) => x.id === ref.id);
       if (a && a.invoiceId == null && can('advance_receipt')) {
-        list.push({ id: 'cancel', label: 'Annuler l’avance', confirm: 'Confirmer l’annulation', danger: true, run: () => this.advances.cancelAdvance({ id: ref.id }), next: () => null });
+        list.push({ id: 'cancel', label: t.cancelAdvance, confirm: t.confirmCancel, danger: true, run: () => this.advances.cancelAdvance({ id: ref.id }), next: () => null });
       }
     }
     if (ref.kind === 'payment' && can('invoice_modify')) {
       list.push({
         id: 'cancel',
-        label: 'Annuler le paiement',
-        confirm: 'Confirmer l’annulation',
+        label: t.cancelPayment,
+        confirm: t.confirmCancel,
         danger: true,
         run: () => this.invoices.cancelInvoicePayment({ id: ref.invoiceId, paymentId: ref.id }),
         next: () => 'f' + ref.invoiceId,
@@ -400,7 +400,7 @@ export class ItemDetail {
       const pdf = await firstValueFrom(printable.print({ modelId, mergeAddresses: this.mergeAddresses }));
       openPdf(pdf, printable.fileName);
     } catch (e: unknown) {
-      this.error.set(await blobProblemMessage(e, 'Le PDF n’a pas pu être produit.'));
+      this.error.set(await blobProblemMessage(e, texts().common.pdfFailed));
     } finally {
       this.printing.set(false);
     }

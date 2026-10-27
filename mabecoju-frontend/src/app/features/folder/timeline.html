@@ -1,27 +1,27 @@
 <section class="card timeline" aria-labelledby="timeline-title">
   <div class="head">
-    <h2 id="timeline-title">Fil du dossier</h2>
-    <div class="filters" role="group" aria-label="Filtrer le fil">
-      @for (f of filters; track f.value) {
-        <button type="button" class="chip" [class.on]="filter() === f.value" [attr.aria-pressed]="filter() === f.value" (click)="filter.set(f.value)">
-          {{ f.label }}
+    <h2 id="timeline-title">{{ tx().folder.quick.title }}</h2>
+    <div class="filters" role="group" [attr.aria-label]="tx().folder.quick.filter">
+      @for (f of filters; track f) {
+        <button type="button" class="chip" [class.on]="filter() === f" [attr.aria-pressed]="filter() === f" (click)="filter.set(f)">
+          {{ tx().folder.quick.filters[f] }}
         </button>
       }
     </div>
   </div>
 
   @if (canRecord()) {
-    <form class="quick" (ngSubmit)="record()" aria-label="Saisir une séance">
+    <form class="quick" (ngSubmit)="record()" [attr.aria-label]="tx().folder.quick.form">
       <div class="field date">
-        <label for="q-date">Date</label>
+        <label for="q-date">{{ tx().folder.quick.date }}</label>
         <input id="q-date" name="date" type="date" class="input" required [(ngModel)]="date" />
       </div>
       <div class="field minutes">
-        <label for="q-min">Minutes</label>
+        <label for="q-min">{{ tx().folder.quick.minutes }}</label>
         <input #minutesInput id="q-min" name="minutes" type="number" min="1" step="5" class="input" required [ngModel]="minutes" (ngModelChange)="onMinutes($event)" />
       </div>
       <div class="field wording">
-        <label for="q-label">Libellé</label>
+        <label for="q-label">{{ tx().folder.quick.wording }}</label>
         <input id="q-label" name="description" class="input" list="q-wordings" maxlength="1024" [ngModel]="description()" (ngModelChange)="onDescription($event)" />
         <datalist id="q-wordings">
           @for (w of wordings(); track w) {
@@ -30,18 +30,18 @@
         </datalist>
       </div>
       <div class="field tariff">
-        <label for="q-tariff">Tarif</label>
+        <label for="q-tariff">{{ tx().folder.quick.tariff }}</label>
         <select id="q-tariff" name="tariff" class="input" [ngModel]="tariff()" (ngModelChange)="tariff.set($event)">
-          <option value="meeting">Séance · {{ settings().meetingHourlyRate | chf }}/h</option>
-          <option value="standard">Autre · {{ settings().standardHourlyRate | chf }}/h</option>
+          <option value="meeting">{{ tx().folder.quick.meeting }} · {{ settings().meetingHourlyRate | chf }}/h</option>
+          <option value="standard">{{ tx().folder.quick.standard }} · {{ settings().standardHourlyRate | chf }}/h</option>
         </select>
       </div>
       <div class="field total">
-        <span class="label">Montant</span>
+        <span class="label">{{ tx().folder.quick.amount }}</span>
         <span class="mono">{{ amount() | chf }}</span>
       </div>
       <button type="submit" class="btn btn-primary" [disabled]="saving() || minutesValue() <= 0">
-        {{ saving() ? 'Ajout…' : 'Ajouter la séance' }}
+        {{ saving() ? tx().folder.quick.adding : tx().folder.quick.add }}
       </button>
     </form>
     @if (error(); as message) {
@@ -89,6 +89,6 @@
       </ol>
     </div>
   } @empty {
-    <p class="muted">Rien à afficher pour ce filtre.</p>
+    <p class="muted">{{ tx().folder.quick.empty }}</p>
   }
 </section>
