@@ -50,7 +50,7 @@
 
 .orders { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .order { width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px; border: 1px solid var(--row-line); border-radius: 10px; background: var(--surface); text-align: left; cursor: pointer; }
-.order.selected { background: var(--tint); border-color: #b9cdea; }
+.order.selected { background: var(--tint); border-color: var(--accent-border); }
 .order.off { opacity: 0.6; }
 .day { width: 52px; font-size: 12px; color: var(--muted); }
 .order-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }

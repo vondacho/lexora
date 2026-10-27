@@ -1,4 +1,5 @@
 import { Component, computed, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { BrandStore } from '../../core/brand';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { DocumentModel, DocumentModelInput, DocumentType, TemplatesService } from '../../api/generated';
@@ -56,6 +57,8 @@ export class TemplatesPage {
   private readonly editorSection = viewChild<ElementRef<HTMLElement>>('editorSection');
 
   protected readonly tx = texts;
+  /** Letters are French: the preview shows the French tagline. */
+  protected readonly brand = inject(BrandStore);
   protected readonly fields = computed(fields);
   protected readonly typeLabel = typeLabel;
   protected readonly types: DocumentType[] = ['INVOICE', 'ADVANCE_REQUEST', 'RECALL', 'UNDEFINED'];

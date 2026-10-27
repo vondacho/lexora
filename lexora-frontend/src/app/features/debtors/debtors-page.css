@@ -44,7 +44,7 @@
 }
 
 .doc:hover { border-color: var(--border-strong); }
-.doc.active { background: var(--tint); border-color: #b9cdea; }
+.doc.active { background: var(--tint); border-color: var(--accent-border); }
 .doc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .doc-title { font-weight: 500; }
 .doc-sub { font-size: 12px; color: var(--muted); }
@@ -72,7 +72,7 @@
 .chip {
   min-height: 30px;
   padding: 0 10px;
-  border: 1px solid #b9cdea;
+  border: 1px solid var(--accent-border);
   border-radius: 999px;
   background: var(--tint);
   color: var(--accent-dark);

@@ -1,9 +1,12 @@
-/* lexora — blue style of the mockup: tokens, base elements and shared building blocks. */
+/* Lexora — blue style of the mockup: tokens, base elements and shared building blocks. */
 
 :root {
+  /* brand colours: --accent and --accent-dark are replaced by the installation's (BrandStore), the others follow */
   --accent: #1d5fb4;
   --accent-dark: #164a8c;
-  --tint: #e8f0fb;
+  --tint: color-mix(in srgb, var(--accent) 10%, white);
+  --accent-border: color-mix(in srgb, var(--accent) 30%, white);
+  --accent-shadow: color-mix(in srgb, var(--accent) 8%, transparent);
   --ink: #172033;
   --muted: #4f5b6b;
   --border: #dde3ea;

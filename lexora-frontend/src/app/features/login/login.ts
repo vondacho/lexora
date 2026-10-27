@@ -5,10 +5,11 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { texts } from '../../i18n/i18n';
 import { LangToggle } from '../../i18n/lang-toggle';
+import { BrandMark } from '../../core/brand-mark';
 
 @Component({
   selector: 'lx-login',
-  imports: [FormsModule, LangToggle],
+  imports: [FormsModule, LangToggle, BrandMark],
   templateUrl: './login.html',
   styleUrl: './login.css',
 })

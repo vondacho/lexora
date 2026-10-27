@@ -1,7 +1,7 @@
 .head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .sub { margin: 4px 0 0; }
 .small { font-size: 12px; }
-.create { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; border-color: #b9cdea; box-shadow: 0 2px 12px rgba(29, 95, 180, 0.08); }
+.create { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; border-color: var(--accent-border); box-shadow: 0 2px 12px var(--accent-shadow); }
 .create-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 h3 { font-size: 14px; margin: 4px 0 0; }
 .actions { display: flex; gap: 8px; }

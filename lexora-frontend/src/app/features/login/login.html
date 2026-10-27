@@ -1,8 +1,7 @@
 <main class="page">
   <form class="card login" (ngSubmit)="submit()" aria-labelledby="login-title">
     <div class="brand">
-      <span class="brand-name">lexora</span>
-      <span class="muted">{{ t().shell.tagline }}</span>
+      <lx-brand class="stacked" />
       <lx-lang-toggle class="lang" />
     </div>
     <h1 id="login-title">{{ t().login.title }}</h1>

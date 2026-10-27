@@ -3,8 +3,8 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  border-color: #b9cdea;
-  box-shadow: 0 2px 12px rgba(29, 95, 180, 0.08);
+  border-color: var(--accent-border);
+  box-shadow: 0 2px 12px var(--accent-shadow);
 }
 
 .composer-head {

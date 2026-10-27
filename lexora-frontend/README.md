@@ -1,8 +1,8 @@
 # Lexora front end
 
-Angular 22 application of Lexora, built from the clickable mockup (blue style, sidebar that can be hidden, drawer
-menu on tablets and phones). It talks to the REST API of `lexora-infrastructure` only through a client generated from
-the OpenAPI contract.
+Angular 22 application of Lexora, built from the clickable mockup (blue style by default, the colours and logo of
+each installation coming from its settings; sidebar that can be hidden, drawer menu on tablets and phones). It talks
+to the REST API of `lexora-infrastructure` only through a client generated from the OpenAPI contract.
 
 Built so far:
 
@@ -78,12 +78,21 @@ is kept in the browser (`localStorage`, key `lexora.lang`). French is the defaul
 - What is printed stays French: letters, the letter preview and the placeholders' sample values, like the PDFs the
   API produces. Data (folder names, wordings, statuses) is shown as entered.
 
+## Branding
+
+`core/brand.ts` (`BrandStore`) loads the brand of the installation from `GET /api/branding` before the first page
+(`provideAppInitializer` in `app.config.ts`; the Lexora defaults when the API cannot be reached). It sets `--accent` and
+`--accent-dark` on the page, and `styles.css` derives `--tint`, `--accent-border` and `--accent-shadow` from them: use
+these tokens rather than blue literals. `core/brand-mark.ts` (`<lx-brand>`) shows the logo, name and tagline (header,
+login page; class `stacked` puts the tagline under the name). The favicon comes from the API too (`index.html`). The
+settings themselves are described in the repository's README.
+
 ## Layout
 
 ```
 src/app/
   api/generated/   client generated from the contract (not versioned)
-  core/            AuthService, authInterceptor, authGuard
+  core/            AuthService, authInterceptor, authGuard, BrandStore and <lx-brand>
   shell/           header, sidebar / drawer, navigation entries
   i18n/            language switch, texts of both languages, page titles
   shared/          formatting of amounts (1'230.40) and dates (24.10.2026)

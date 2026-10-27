@@ -154,7 +154,7 @@
               @if (page === 'letter') {
                 <article class="sheet" [attr.aria-label]="tx().templates.letterPage">
                   <div class="sheet-top">
-                    <div class="brand">lexora <span class="muted">juriste &amp; médiatrice</span></div>
+                    <div class="brand">{{ brand.name() }} <span class="muted">{{ brand.brand().taglineFr }}</span></div>
                     <div class="address">
                       <div>{{ p.values['title_1'] }}</div>
                       <div>{{ p.values['firstName_1'] }} {{ p.values['lastName_1'] }}</div>

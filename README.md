@@ -1,8 +1,6 @@
 # Lexora
 
-Back office of the office: client folders, fees ("honoraires"), provision requests, invoices, payment follow-up and the
-office books. Rewrite of the PHP application `mabecoju-php` with Java / Spring Boot, on the **same MySQL database**.
-This repository holds the REST API and, in `lexora-frontend`, the Angular front end (in progress).
+Legal Practice Management System.
 
 ## Architecture
 
@@ -136,7 +134,7 @@ java -jar lexora-infrastructure/target/lexora.jar
   (usable to generate the Angular client). Both are public.
 - Health: `/actuator/health`.
 - Every `/api/**` call needs HTTP Basic credentials of an `all_users` account; each endpoint requires the same page grant as
-  the legacy page (`GET /api/me` returns the user's grants).
+  the legacy page (`GET /api/me` returns the user's grants). Only `GET /api/branding/**` is public: the login page shows it.
 
 Example:
 
@@ -144,6 +142,46 @@ Example:
 curl -u user:password http://localhost:8080/api/folders?name=Dup
 curl -u user:password http://localhost:8080/api/debtors/overview
 ```
+
+## Branding
+
+Each installation shows its own brand: name of the office, tagline, colours, logo and browser icon. These are deployment
+settings, read at startup (a change needs a restart), with no rebuild of the API or the front end. The front end loads
+them from `GET /api/branding` before its first page, applies the colours (lighter tints and borders are derived from the
+main colour), and shows the logo, name and tagline in the header and on the login page; the page titles end with the
+name. The PDFs give the product name as their producer; what they print (header and footer images, city, signature,
+QR-bill creditor) stays under `lexora.documents` ([documents](docs/documents.md)).
+
+| Property (environment variable) | Default | Meaning |
+|---|---|---|
+| `lexora.branding.product-name` (`LEXORA_BRANDING_PRODUCT_NAME`) | `Lexora` | Name of the product |
+| `lexora.branding.office-name` (`LEXORA_BRANDING_OFFICE_NAME`) | none | Name of the office, shown instead of the product name |
+| `lexora.branding.tagline-fr`, `tagline-en` (`LEXORA_BRANDING_TAGLINE_FR`, `_EN`) | none | Line next to the name; the French one is used in English when there is no English one |
+| `lexora.branding.accent-color` (`LEXORA_BRANDING_ACCENT_COLOR`) | `#1d5fb4` | Main colour: buttons, links, selection |
+| `lexora.branding.accent-dark-color` (`LEXORA_BRANDING_ACCENT_DARK_COLOR`) | 78 % of the main colour | Hover and pressed states |
+| `lexora.branding.logo` (`LEXORA_BRANDING_LOGO`) | monogram | `file:` path of an SVG, PNG, JPEG or WebP image; without it, the first letter of the name on the main colour |
+| `lexora.branding.logo-includes-name` (`LEXORA_BRANDING_LOGO_INCLUDES_NAME`) | `false` | The logo is a wordmark: the header shows it wider and does not repeat the name |
+| `lexora.branding.favicon` (`LEXORA_BRANDING_FAVICON`) | monogram | `file:` path of an ICO, SVG or PNG icon |
+
+The application does not start when a colour is not `#rrggbb` or an image is missing or of another type, so a typo
+shows at deployment, not as a broken page. Example, in a `config/application.yml` beside the jar (read by Spring Boot
+at startup, on top of the built-in settings) or as environment variables:
+
+```yaml
+lexora:
+  branding:
+    office-name: Étude Exemple
+    tagline-fr: juriste & médiatrice
+    tagline-en: lawyer & mediator
+    accent-color: "#7a1f5c"
+    logo: file:/etc/lexora/logo.svg
+    favicon: file:/etc/lexora/favicon.ico
+```
+
+The images are served at `/api/branding/logo` and `/api/branding/favicon` with a version in their URL that changes with
+the file, so browsers keep them a day without showing an old logo after a change. The H2 demo profile sets only the
+taglines; start it with e.g. `LEXORA_BRANDING_OFFICE_NAME="Étude Exemple" LEXORA_BRANDING_ACCENT_COLOR="#7a1f5c"` to
+see a brand.
 
 ## Before production
 

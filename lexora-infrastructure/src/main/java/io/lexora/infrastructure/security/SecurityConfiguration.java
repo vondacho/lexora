@@ -51,6 +51,8 @@ class SecurityConfiguration {
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/actuator/health/**", "/openapi/**", "/scalar", "/scalar/**").permitAll()
+                        // the brand is shown by the login page
+                        .requestMatchers(HttpMethod.GET, "/api/branding", "/api/branding/**").permitAll()
                         .anyRequest().authenticated());
         return http.build();
     }

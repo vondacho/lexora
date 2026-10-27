@@ -48,6 +48,8 @@ tags:
     description: Financial reports
   - name: Users
     description: Users and grants
+  - name: Branding
+    description: Name, colours and images of this installation, set by its deployment settings
 
 paths:
   # ----- folders ---------------------------------------------------------------------------------------------------
@@ -1200,6 +1202,38 @@ paths:
         default: { $ref: '#/components/responses/Problem' }
 
   # ----- users -----------------------------------------------------------------------------------------------------
+  /api/branding:
+    get:
+      tags: [Branding]
+      operationId: getBranding
+      summary: Brand of this installation
+      description: |
+        Public: the login page shows it before authentication. Set by the `lexora.branding` properties; a change
+        needs a restart. The image URLs carry a version (`?v=`) that changes with the image, so they can be cached.
+      security: []
+      responses:
+        '200': { description: The brand, content: { application/json: { schema: { $ref: '#/components/schemas/Branding' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/branding/logo:
+    get:
+      tags: [Branding]
+      operationId: getBrandingLogo
+      summary: Logo shown in the header and on the login page
+      description: Public. SVG, PNG, JPEG or WebP, as configured.
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/Image' }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/branding/favicon:
+    get:
+      tags: [Branding]
+      operationId: getBrandingFavicon
+      summary: Icon of the browser tab
+      description: Public. ICO, SVG or PNG, as configured.
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/Image' }
+        default: { $ref: '#/components/responses/Problem' }
   /api/me:
     get:
       tags: [Users]
@@ -1325,6 +1359,14 @@ components:
     To: { name: to, in: query, required: true, schema: { type: string, format: date } }
 
   responses:
+    Image:
+      description: The image, with its own content type
+      content:
+        image/svg+xml: { schema: { type: string, format: binary } }
+        image/png: { schema: { type: string, format: binary } }
+        image/jpeg: { schema: { type: string, format: binary } }
+        image/webp: { schema: { type: string, format: binary } }
+        image/x-icon: { schema: { type: string, format: binary } }
     Pdf:
       description: The PDF, named in the Content-Disposition header
       content:
@@ -2166,3 +2208,17 @@ components:
         lastName: { type: string }
         shortcut: { type: string }
         grants: { type: array, items: { type: string }, description: 'Grants as module:page' }
+    # ----- branding -------------------------------------------------------------------------------------------------
+    Branding:
+      type: object
+      required: [productName, accentColor, accentDarkColor, logoUrl, logoIncludesName, faviconUrl]
+      properties:
+        productName: { type: string, example: Lexora, description: Name of the product }
+        officeName: { type: string, example: 'Étude Exemple', description: 'Name of the office using this installation; absent: the product name is shown' }
+        taglineFr: { type: string, example: 'juriste & médiatrice', description: 'Line under the name, in French' }
+        taglineEn: { type: string, example: 'lawyer & mediator', description: 'Line under the name, in English (the French one when absent)' }
+        accentColor: { type: string, pattern: '^#[0-9a-f]{6}$', example: '#1d5fb4', description: 'Main colour (buttons, links, selection)' }
+        accentDarkColor: { type: string, pattern: '^#[0-9a-f]{6}$', example: '#164a8c', description: Hover and pressed states }
+        logoUrl: { type: string, example: '/api/branding/logo?v=3f2a9c1e' }
+        logoIncludesName: { type: boolean, default: false, description: 'The logo already shows the name: the header shows only the tagline next to it' }
+        faviconUrl: { type: string, example: '/api/branding/favicon?v=91bd04aa' }

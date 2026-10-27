@@ -1,6 +1,5 @@
 export const shellFr = {
   skip: 'Aller au contenu',
-  tagline: 'juriste & médiatrice',
   search: 'Rechercher un dossier',
   searchPlaceholder: 'Rechercher un dossier, une référence ou une action…',
   logout: 'Se déconnecter',
@@ -25,7 +24,6 @@ export const shellFr = {
 
 export const shellEn: typeof shellFr = {
   skip: 'Skip to content',
-  tagline: 'lawyer & mediator',
   search: 'Search a folder',
   searchPlaceholder: 'Search a folder, a reference or an action…',
   logout: 'Log out',

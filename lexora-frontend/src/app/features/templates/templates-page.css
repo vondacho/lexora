@@ -25,7 +25,7 @@ code { font-family: var(--mono); font-size: 12px; padding: 1px 4px; border-radiu
 .page-row .input { min-height: 34px; }
 .text-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { min-height: 30px; padding: 0 10px; border: 1px solid #b9cdea; border-radius: 999px; background: var(--tint); color: var(--accent-dark); font-size: 12px; cursor: pointer; }
+.chip { min-height: 30px; padding: 0 10px; border: 1px solid var(--accent-border); border-radius: 999px; background: var(--tint); color: var(--accent-dark); font-size: 12px; cursor: pointer; }
 .chip.on { border-color: var(--ink); background: var(--ink); color: #fff; }
 .plain { min-height: 280px; padding: 10px 12px; font-family: var(--mono); font-size: 13px; line-height: 1.5; resize: vertical; }
 .convert { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }

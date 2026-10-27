@@ -109,7 +109,7 @@
 }
 
 .row.selected {
-  border-color: #b9cdea;
+  border-color: var(--accent-border);
   background: var(--tint);
 }
 
@@ -172,7 +172,7 @@
   color: var(--muted);
 }
 
-.effect[data-tone='up'] { border-color: #b9cdea; color: var(--accent-dark); }
+.effect[data-tone='up'] { border-color: var(--accent-border); color: var(--accent-dark); }
 .effect[data-tone='down'] { border-color: #c8e4d3; color: var(--ok); }
 
 .side {

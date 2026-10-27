@@ -1,6 +1,7 @@
 package io.lexora.infrastructure.document;
 
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
+import io.lexora.infrastructure.branding.BrandingProperties;
 import org.jsoup.Jsoup;
 import org.jsoup.helper.W3CDom;
 import org.jsoup.nodes.Document;
@@ -16,9 +17,11 @@ import java.io.UncheckedIOException;
 class HtmlToPdf {
 
     private final DocumentProperties properties;
+    private final BrandingProperties branding;
 
-    HtmlToPdf(DocumentProperties properties) {
+    HtmlToPdf(DocumentProperties properties, BrandingProperties branding) {
         this.properties = properties;
+        this.branding = branding;
     }
 
     /** CSS font-family of the documents. */
@@ -35,7 +38,7 @@ class HtmlToPdf {
                 .withW3cDocument(new W3CDom().fromJsoup(page), "/")
                 // only embedded (data:) images may be loaded: no file or network access from templates
                 .useUriResolver((base, uri) -> uri != null && uri.startsWith("data:") ? uri : null)
-                .withProducer("Lexora")
+                .withProducer(branding.productName())
                 .toStream(out);
         if (hasFont()) {
             builder.useFont(new File(properties.fontFile()), properties.fontFamily());

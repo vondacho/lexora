@@ -1,4 +1,4 @@
-import { ApplicationConfig, LOCALE_ID, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { ApplicationConfig, inject, LOCALE_ID, provideAppInitializer, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localeFrCh from '@angular/common/locales/fr-CH';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
@@ -7,6 +7,7 @@ import { routes } from './app.routes';
 import { provideApi } from './api/generated';
 import { authInterceptor } from './core/auth.interceptor';
 import { TranslatedTitleStrategy } from './i18n/title-strategy';
+import { BrandStore } from './core/brand';
 
 registerLocaleData(localeFrCh);
 
@@ -19,5 +20,7 @@ export const appConfig: ApplicationConfig = {
     provideApi({ basePath: '' }),
     { provide: LOCALE_ID, useValue: 'fr-CH' },
     { provide: TitleStrategy, useExisting: TranslatedTitleStrategy },
+    // name, colours and logo of the installation, before the first page
+    provideAppInitializer(() => inject(BrandStore).load()),
   ],
 };

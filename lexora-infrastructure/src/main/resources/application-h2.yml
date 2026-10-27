@@ -21,6 +21,10 @@ spring:
       path: /h2-console
 
 lexora:
+  branding:
+    # the demo keeps the tagline of the office; try LEXORA_BRANDING_OFFICE_NAME or _ACCENT_COLOR to see a brand
+    tagline-fr: juriste & médiatrice
+    tagline-en: lawyer & mediator
   documents:
     qr-bill:
       # sample QR-IBAN of the Swiss Implementation Guidelines, to see QR-bills locally
