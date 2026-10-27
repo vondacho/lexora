@@ -1,0 +1,32 @@
+# Columns added by the PHP application in May 2024 (commit 37e9715), after the 2023 dump the baseline comes from.
+# Skipped where they already exist (production).
+databaseChangeLog:
+  - property:
+      name: flag.type
+      value: tinyint(1)
+      dbms: mysql,mariadb
+  - property:
+      name: flag.type
+      value: boolean
+      dbms: h2
+
+  - changeSet:
+      id: 0002-invo-models-single-page
+      author: mabecoju
+      comment: Force a document page on a single page, per address slot
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT COUNT(*) FROM information_schema.columns
+              WHERE LOWER(table_name) = 'invo_models' AND LOWER(column_name) = 'mode_single_page_1'
+              AND (LOWER(table_schema) = LOWER(DATABASE()) OR LOWER(table_catalog) = LOWER(DATABASE()))
+      changes:
+        - addColumn:
+            tableName: invo_models
+            columns:
+              - column: { name: mode_single_page_1, type: "${flag.type}", defaultValueNumeric: 0 }
+              - column: { name: mode_single_page_2, type: "${flag.type}", defaultValueNumeric: 0 }
+              - column: { name: mode_single_page_3, type: "${flag.type}", defaultValueNumeric: 0 }
+              - column: { name: mode_single_page_4, type: "${flag.type}", defaultValueNumeric: 0 }

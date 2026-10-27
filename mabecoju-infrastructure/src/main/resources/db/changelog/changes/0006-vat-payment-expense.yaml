@@ -1,0 +1,18 @@
+# Each VAT payment is also booked as an office expense (book_payments), so that the money paid to the tax
+# administration counts in the expenses and the balance. The link lets the expense follow the VAT payment.
+# Payments recorded before keep no expense (null): delete and record them again to book it.
+databaseChangeLog:
+  - changeSet:
+      id: 0006-vat-payment-expense
+      author: mabecoju
+      changes:
+        - addColumn:
+            tableName: book_vat_payments
+            columns:
+              - column: { name: vat_expense_id, type: int, remarks: "Office expense booked for the payment (book_payments.pay_id)" }
+        - createIndex:
+            tableName: book_vat_payments
+            indexName: vat_expense_id
+            unique: true
+            columns:
+              - column: { name: vat_expense_id }

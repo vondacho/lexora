@@ -1,0 +1,24 @@
+# Liquibase master changelog of the mabecoju database.
+# Add each new change as a new file under changes/, included at the end of this list; never edit an applied change.
+databaseChangeLog:
+  - include:
+      file: changes/0001-legacy-schema.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/0002-invo-models-single-page.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/0003-tickets-issued-for-documents.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/0004-migrate-legacy-ticket-links.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/0005-vat-payments.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/0006-vat-payment-expense.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/0007-bank-entries.yaml
+      relativeToChangelogFile: true

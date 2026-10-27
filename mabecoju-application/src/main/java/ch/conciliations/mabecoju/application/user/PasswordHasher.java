@@ -1,0 +1,7 @@
+package ch.conciliations.mabecoju.application.user;
+
+/** Port hashing user passwords before they are stored. */
+public interface PasswordHasher {
+
+    String hash(String rawPassword);
+}

@@ -1,0 +1,44 @@
+# Baseline: the schema inherited from the PHP application.
+# On an existing database (production) the tables are already there: the change set is only marked as applied.
+# The checks query information_schema directly, which works alike on MySQL and H2 whatever the identifier case.
+# On an empty database it creates the 24 legacy tables.
+databaseChangeLog:
+  - changeSet:
+      id: 0001-legacy-schema-mysql
+      author: mabecoju
+      dbms: mysql,mariadb
+      comment: Legacy schema (MyISAM, as created by the PHP application)
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT COUNT(*) FROM information_schema.tables
+              WHERE LOWER(table_name) = 'invo_folders'
+              AND (LOWER(table_schema) = LOWER(DATABASE()) OR LOWER(table_catalog) = LOWER(DATABASE()))
+      changes:
+        - sqlFile:
+            path: sql/0001-legacy-schema-mysql.sql
+            relativeToChangelogFile: true
+            splitStatements: true
+            stripComments: true
+
+  - changeSet:
+      id: 0001-legacy-schema-h2
+      author: mabecoju
+      dbms: h2
+      comment: H2 equivalent of the legacy schema, for tests and local development
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT COUNT(*) FROM information_schema.tables
+              WHERE LOWER(table_name) = 'invo_folders'
+              AND (LOWER(table_schema) = LOWER(DATABASE()) OR LOWER(table_catalog) = LOWER(DATABASE()))
+      changes:
+        - sqlFile:
+            path: sql/0001-legacy-schema-h2.sql
+            relativeToChangelogFile: true
+            splitStatements: true
+            stripComments: true

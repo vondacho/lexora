@@ -1,0 +1,26 @@
+# Bank transactions imported from camt.054 notifications (new in v2), by the reference the bank gives each of them,
+# so that a notification imported twice does not book the payments twice.
+databaseChangeLog:
+  - changeSet:
+      id: 0007-bank-entries
+      author: mabecoju
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT COUNT(*) FROM information_schema.tables
+              WHERE LOWER(table_name) = 'invo_bank_entries'
+              AND (LOWER(table_schema) = LOWER(DATABASE()) OR LOWER(table_catalog) = LOWER(DATABASE()))
+      changes:
+        - createTable:
+            tableName: invo_bank_entries
+            remarks: Bank transactions imported from camt.054 notifications
+            columns:
+              - column: { name: bank_id, type: int, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: bank_ref, type: varchar(80), constraints: { nullable: false, unique: true }, remarks: Reference of the bank for the transaction (AcctSvcrRef) }
+              - column: { name: bank_date, type: date }
+              - column: { name: bank_amount, type: "decimal(12,2)", constraints: { nullable: false } }
+              - column: { name: bank_iban, type: varchar(34), remarks: Account of the payer }
+              - column: { name: bank_mute_date, type: date }
+              - column: { name: bank_mute_user, type: varchar(10) }

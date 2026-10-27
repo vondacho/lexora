@@ -1,0 +1,71 @@
+# Local H2 database: the production changelog, then demo data (profile "h2").
+databaseChangeLog:
+  - include:
+      file: db/changelog/db.changelog-master.yaml
+  - changeSet:
+      id: h2-demo-data
+      author: mabecoju
+      dbms: h2
+      comment: Demo user (demo / demo, every grant), defaults, a folder with two customers, honoraries and templates
+      changes:
+        - sqlFile:
+            path: db/h2/demo-data.sql
+            splitStatements: true
+            stripComments: true
+  - changeSet:
+      id: h2-demo-vat-payment-grant
+      author: mabecoju
+      dbms: h2
+      comment: The demo user may record VAT payments (fresh databases get the demo user after changeset 0005)
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO all_grants (gran_user_name, gran_module_name, gran_page_name)
+              SELECT 'demo', 'booking', 'vat_payment' FROM (VALUES (1)) AS one(x)
+              WHERE NOT EXISTS (SELECT 1 FROM all_grants WHERE gran_user_name = 'demo'
+                                AND gran_module_name = 'booking' AND gran_page_name = 'vat_payment')
+  - changeSet:
+      id: h2-demo-folders
+      author: mabecoju
+      dbms: h2
+      comment: >-
+        Folders around the home page's to-do list: overdue invoices and requests, folders to invoice, paid invoices,
+        advances, standing orders and office expenses, dated relative to the day the database is created
+      preConditions:
+        # skipped on a database where these folders were created by hand
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT COUNT(*) FROM invo_folders WHERE fold_name IN ('Keller', 'Meyer', 'Bernasconi', 'Favre', 'Girard',
+              'Rochat c. Rochat', 'Martin & Rossi', 'Pittet c. Pittet', 'Hug')
+      changes:
+        - sqlFile:
+            path: db/h2/demo-folders.sql
+            splitStatements: true
+            stripComments: true
+  - changeSet:
+      id: h2-demo-shares
+      author: mabecoju
+      dbms: h2
+      comment: Shares of the single-customer demo invoices and request (h2-demo-folders created them without)
+      changes:
+        - sqlFile:
+            path: db/h2/demo-shares.sql
+            splitStatements: true
+            stripComments: true
+  - changeSet:
+      id: h2-demo-recall-templates
+      author: mabecoju
+      dbms: h2
+      comment: A second reminder and a formal notice, after the reminder template of h2-demo-data
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT COUNT(*) FROM invo_models WHERE mode_name IN ('Rappel 2 - ferme', 'Mise en demeure')
+      changes:
+        - sqlFile:
+            path: db/h2/demo-recall-templates.sql
+            splitStatements: true
+            stripComments: true

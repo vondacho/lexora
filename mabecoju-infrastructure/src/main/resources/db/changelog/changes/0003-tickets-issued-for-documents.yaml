@@ -1,0 +1,31 @@
+# Payment slips remember the invoice or advance request they were issued for.
+# This replaces the legacy link tables invo_invoices_tickets and invo_requests_tickets (see 0004).
+# Nullable columns: the PHP application, which does not know them, keeps working.
+databaseChangeLog:
+  - changeSet:
+      id: 0003-tickets-issued-for-documents
+      author: mabecoju
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT COUNT(*) FROM information_schema.columns
+              WHERE LOWER(table_name) = 'invo_tickets' AND LOWER(column_name) = 'tick_invo_id'
+              AND (LOWER(table_schema) = LOWER(DATABASE()) OR LOWER(table_catalog) = LOWER(DATABASE()))
+      changes:
+        - addColumn:
+            tableName: invo_tickets
+            columns:
+              - column: { name: tick_invo_id, type: int, remarks: Invoice the slip was issued for }
+              - column: { name: tick_req_id, type: int, remarks: Advance request the slip was issued for }
+        - createIndex:
+            tableName: invo_tickets
+            indexName: tick_invo_id
+            columns:
+              - column: { name: tick_invo_id }
+        - createIndex:
+            tableName: invo_tickets
+            indexName: tick_req_id
+            columns:
+              - column: { name: tick_req_id }

@@ -1,0 +1,33 @@
+# Copies the legacy links between payment slips and documents into invo_tickets.
+# A slip linked to several documents (3 cases in 2023) keeps the most recent one; links to deleted documents are
+# ignored. The legacy tables are left untouched; drop them in a later change once the PHP application is retired.
+databaseChangeLog:
+  - changeSet:
+      id: 0004-migrate-legacy-ticket-links
+      author: mabecoju
+      changes:
+        - sql:
+            comment: Invoice each slip was issued for
+            sql: >-
+              UPDATE invo_tickets SET tick_invo_id = (
+                SELECT MAX(l.invo_tick_invo_id) FROM invo_invoices_tickets l
+                JOIN invo_invoices i ON i.invo_id = l.invo_tick_invo_id
+                WHERE l.invo_tick_tick_id = invo_tickets.tick_id)
+              WHERE tick_invo_id IS NULL AND EXISTS (
+                SELECT 1 FROM invo_invoices_tickets l
+                JOIN invo_invoices i ON i.invo_id = l.invo_tick_invo_id
+                WHERE l.invo_tick_tick_id = invo_tickets.tick_id)
+        - sql:
+            comment: Advance request each slip was issued for
+            sql: >-
+              UPDATE invo_tickets SET tick_req_id = (
+                SELECT MAX(l.req_tick_req_id) FROM invo_requests_tickets l
+                JOIN invo_requests r ON r.req_id = l.req_tick_req_id
+                WHERE l.req_tick_tick_id = invo_tickets.tick_id)
+              WHERE tick_req_id IS NULL AND EXISTS (
+                SELECT 1 FROM invo_requests_tickets l
+                JOIN invo_requests r ON r.req_id = l.req_tick_req_id
+                WHERE l.req_tick_tick_id = invo_tickets.tick_id)
+      rollback:
+        - sql:
+            sql: UPDATE invo_tickets SET tick_invo_id = NULL, tick_req_id = NULL

@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:mabecoju;MODE=MySQL;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  liquibase:
+    # same migrations as production, plus test fixtures
+    change-log: classpath:db/changelog-test.yaml
+  jpa:
+    hibernate:
+      # checks every JPA mapping against the legacy schema
+      ddl-auto: validate
+
+mabecoju:
+  documents:
+    qr-bill:
+      # sample QR-IBAN of the Swiss Implementation Guidelines
+      iban: CH44 3199 9123 0008 8901 2
+      creditor-name: Cabinet de test
+      street: Rue du Test
+      house-number: "1"
+      postal-code: "2000"
+      town: Neuchâtel

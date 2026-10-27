@@ -1,0 +1,47 @@
+# VAT paid to the tax administration, period by period (new in v2).
+# The money received and the net tax rate are stored with the payment: later corrections of the books do not change
+# what was paid. Exact decimals, unlike the legacy float columns.
+databaseChangeLog:
+  - changeSet:
+      id: 0005-vat-payments
+      author: mabecoju
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT COUNT(*) FROM information_schema.tables
+              WHERE LOWER(table_name) = 'book_vat_payments'
+              AND (LOWER(table_schema) = LOWER(DATABASE()) OR LOWER(table_catalog) = LOWER(DATABASE()))
+      changes:
+        - createTable:
+            tableName: book_vat_payments
+            remarks: VAT paid for a period (net tax rate method)
+            columns:
+              - column: { name: vat_id, type: int, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: vat_from, type: date, constraints: { nullable: false }, remarks: First day of the period }
+              - column: { name: vat_to, type: date, constraints: { nullable: false }, remarks: Last day of the period }
+              - column: { name: vat_revenue, type: "decimal(12,2)", constraints: { nullable: false }, remarks: "Money received in the period, VAT included" }
+              - column: { name: vat_rate, type: "decimal(6,4)", constraints: { nullable: false }, remarks: Net tax rate as a fraction }
+              - column: { name: vat_amount, type: "decimal(12,2)", constraints: { nullable: false }, remarks: Amount paid }
+              - column: { name: vat_paid_on, type: date, constraints: { nullable: false } }
+              - column: { name: vat_mute_date, type: date }
+              - column: { name: vat_mute_user, type: varchar(10) }
+        - createIndex:
+            tableName: book_vat_payments
+            indexName: vat_from
+            columns:
+              - column: { name: vat_from }
+
+  - changeSet:
+      id: 0005-vat-payment-grant
+      author: mabecoju
+      comment: Whoever may see the VAT report may also record VAT payments
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO all_grants (gran_user_name, gran_module_name, gran_page_name)
+              SELECT DISTINCT g.gran_user_name, 'booking', 'vat_payment' FROM all_grants g
+              WHERE g.gran_module_name = 'booking' AND g.gran_page_name = 'tax_summary'
+              AND NOT EXISTS (SELECT 1 FROM all_grants x WHERE x.gran_user_name = g.gran_user_name
+                              AND x.gran_module_name = 'booking' AND x.gran_page_name = 'vat_payment')
