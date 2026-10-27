@@ -1,12 +1,12 @@
-<h1>Synthèses</h1>
-<p class="muted sub">Entrées et sorties du bureau, activité par personne, relevés imprimables.</p>
+<h1>{{ tx().shell.nav.summaries }}</h1>
+<p class="muted sub">{{ tx().summaries.sub }}</p>
 
 @if (tabs.length === 0) {
-  <p class="card muted">Vos droits ne donnent accès à aucune synthèse.</p>
+  <p class="card muted">{{ tx().summaries.noRight }}</p>
 } @else {
-  <div class="tabs" role="tablist" aria-label="Synthèses">
+  <div class="tabs" role="tablist" [attr.aria-label]="tx().shell.nav.summaries">
     @for (t of tabs; track t.value) {
-      <button type="button" role="tab" [attr.aria-selected]="tab() === t.value" (click)="setTab(t.value)">{{ t.label }}</button>
+      <button type="button" role="tab" [attr.aria-selected]="tab() === t.value" (click)="setTab(t.value)">{{ tx().summaries.tabs[t.value] }}</button>
     }
   </div>
 }
@@ -15,14 +15,14 @@
   @case ('overview') {
     @switch (overview().state) {
       @case ('loading') {
-        <p class="muted">Chargement…</p>
+        <p class="muted">{{ tx().common.loading }}</p>
       }
       @case ('error') {
-        <p class="problem">L’aperçu n’a pas pu être chargé.</p>
+        <p class="problem">{{ tx().summaries.overviewFailed }}</p>
       }
       @case ('ready') {
-        <div class="choices" role="group" aria-label="Année">
-          <span class="muted small">Année</span>
+        <div class="choices" role="group" [attr.aria-label]="tx().summaries.year">
+          <span class="muted small">{{ tx().summaries.year }}</span>
           @for (y of yearChoices(); track y) {
             <button type="button" class="chip" [class.on]="year() === y" [attr.aria-pressed]="year() === y" (click)="year.set(y)">{{ y }}</button>
           }
@@ -30,62 +30,62 @@
         @if (summary(); as s) {
           <div class="tiles">
             <div class="tile">
-              <span class="label">Entrées</span>
+              <span class="label">{{ tx().summaries.incomes }}</span>
               <span class="value">{{ s.total.incomes | chf }}</span>
               <span class="note">
                 @if (incomeChange(); as c) {
-                  {{ c > 0 ? '+' : '' }}{{ c }} % sur la même période de {{ s.year - 1 }}
+                  {{ tx().summaries.change((c > 0 ? '+' : '') + c, s.year - 1) }}
                 } @else {
-                  factures {{ s.total.invoices | chf }} · provisions {{ s.total.advances | chf }}
+                  {{ tx().summaries.split(s.total.invoices | chf, s.total.advances | chf) }}
                 }
               </span>
             </div>
             <div class="tile">
-              <span class="label">Sorties</span>
+              <span class="label">{{ tx().summaries.expenses }}</span>
               <span class="value">{{ s.total.expenses | chf }}</span>
-              <span class="note">dépenses payées du bureau</span>
+              <span class="note">{{ tx().summaries.expensesNote }}</span>
             </div>
             <div class="tile">
-              <span class="label">Solde</span>
+              <span class="label">{{ tx().summaries.balance }}</span>
               <span class="value" [class.ok]="s.total.balance >= 0" [class.warn]="s.total.balance < 0">{{ s.total.balance | chf }}</span>
-              <span class="note">entrées − sorties</span>
+              <span class="note">{{ tx().summaries.balanceNote }}</span>
             </div>
             @if (vatDue() !== null) {
               <div class="tile">
-                <span class="label">TVA due ({{ overview().rate }} %)</span>
+                <span class="label">{{ tx().summaries.vatDue(overview().rate) }}</span>
                 <span class="value accent">{{ vatDue() | chf }}</span>
-                <span class="note">sur les entrées de l’année · <a routerLink="/tva">décompte</a></span>
+                <span class="note">{{ tx().summaries.vatNote }} <a routerLink="/tva">{{ tx().summaries.vatLink }}</a></span>
               </div>
             }
           </div>
 
           <section class="card" aria-labelledby="ov-title">
             <div class="section-head">
-              <h2 id="ov-title">Mois par mois · {{ s.year }}</h2>
-              <span class="legend small"><span class="dot in"></span>entrées <span class="dot out"></span>sorties</span>
+              <h2 id="ov-title">{{ tx().summaries.byMonth(s.year) }}</h2>
+              <span class="legend small"><span class="dot in"></span>{{ tx().summaries.legendIn }} <span class="dot out"></span>{{ tx().summaries.legendOut }}</span>
             </div>
             <div class="table-box">
               <table class="months">
                 <thead>
                   <tr>
-                    <th scope="col">Mois</th>
-                    <th scope="col" class="num">Provisions</th>
-                    <th scope="col" class="num">Factures</th>
-                    <th scope="col" class="num">Entrées</th>
-                    <th scope="col" class="num">Sorties</th>
-                    <th scope="col" class="num">Solde</th>
-                    <th scope="col" class="bars-col">Comparaison</th>
+                    <th scope="col">{{ tx().summaries.month }}</th>
+                    <th scope="col" class="num">{{ tx().summaries.advances }}</th>
+                    <th scope="col" class="num">{{ tx().summaries.invoices }}</th>
+                    <th scope="col" class="num">{{ tx().summaries.incomes }}</th>
+                    <th scope="col" class="num">{{ tx().summaries.expenses }}</th>
+                    <th scope="col" class="num">{{ tx().summaries.balance }}</th>
+                    <th scope="col" class="bars-col">{{ tx().summaries.compare }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   @for (m of s.rows; track m.label) {
                     <tr [class.future]="m.future">
-                      <td data-label="Mois">{{ m.label }}</td>
-                      <td class="mono num" data-label="Provisions">{{ m.advances | chf }}</td>
-                      <td class="mono num" data-label="Factures">{{ m.invoices | chf }}</td>
-                      <td class="mono num" data-label="Entrées">{{ m.incomes | chf }}</td>
-                      <td class="mono num" data-label="Sorties">{{ m.expenses | chf }}</td>
-                      <td class="mono num" data-label="Solde" [class.warn]="m.balance < 0" [class.ok]="m.balance > 0">{{ m.balance | chf }}</td>
+                      <td [attr.data-label]="tx().summaries.month">{{ m.label }}</td>
+                      <td class="mono num" [attr.data-label]="tx().summaries.advances">{{ m.advances | chf }}</td>
+                      <td class="mono num" [attr.data-label]="tx().summaries.invoices">{{ m.invoices | chf }}</td>
+                      <td class="mono num" [attr.data-label]="tx().summaries.incomes">{{ m.incomes | chf }}</td>
+                      <td class="mono num" [attr.data-label]="tx().summaries.expenses">{{ m.expenses | chf }}</td>
+                      <td class="mono num" [attr.data-label]="tx().summaries.balance" [class.warn]="m.balance < 0" [class.ok]="m.balance > 0">{{ m.balance | chf }}</td>
                       <td class="bars-col" aria-hidden="true">
                         <div class="bar in" [style.width.%]="m.incomeRatio * 100"></div>
                         <div class="bar out" [style.width.%]="m.expenseRatio * 100"></div>
@@ -95,22 +95,22 @@
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td>Total</td>
-                    <td class="mono num" data-label="Provisions">{{ s.total.advances | chf }}</td>
-                    <td class="mono num" data-label="Factures">{{ s.total.invoices | chf }}</td>
-                    <td class="mono num" data-label="Entrées">{{ s.total.incomes | chf }}</td>
-                    <td class="mono num" data-label="Sorties">{{ s.total.expenses | chf }}</td>
-                    <td class="mono num" data-label="Solde">{{ s.total.balance | chf }}</td>
+                    <td>{{ tx().summaries.total }}</td>
+                    <td class="mono num" [attr.data-label]="tx().summaries.advances">{{ s.total.advances | chf }}</td>
+                    <td class="mono num" [attr.data-label]="tx().summaries.invoices">{{ s.total.invoices | chf }}</td>
+                    <td class="mono num" [attr.data-label]="tx().summaries.incomes">{{ s.total.incomes | chf }}</td>
+                    <td class="mono num" [attr.data-label]="tx().summaries.expenses">{{ s.total.expenses | chf }}</td>
+                    <td class="mono num" [attr.data-label]="tx().summaries.balance">{{ s.total.balance | chf }}</td>
                     <td class="bars-col"></td>
                   </tr>
                   @if (s.monthsCounted > 0) {
                     <tr class="average">
-                      <td>Moyenne par mois{{ s.monthsCounted < 12 ? ' (' + s.monthsCounted + ' mois)' : '' }}</td>
-                      <td class="mono num" data-label="Provisions">{{ s.average.advances | chf }}</td>
-                      <td class="mono num" data-label="Factures">{{ s.average.invoices | chf }}</td>
-                      <td class="mono num" data-label="Entrées">{{ s.average.incomes | chf }}</td>
-                      <td class="mono num" data-label="Sorties">{{ s.average.expenses | chf }}</td>
-                      <td class="mono num" data-label="Solde">{{ s.average.balance | chf }}</td>
+                      <td>{{ tx().summaries.average(s.monthsCounted) }}</td>
+                      <td class="mono num" [attr.data-label]="tx().summaries.advances">{{ s.average.advances | chf }}</td>
+                      <td class="mono num" [attr.data-label]="tx().summaries.invoices">{{ s.average.invoices | chf }}</td>
+                      <td class="mono num" [attr.data-label]="tx().summaries.incomes">{{ s.average.incomes | chf }}</td>
+                      <td class="mono num" [attr.data-label]="tx().summaries.expenses">{{ s.average.expenses | chf }}</td>
+                      <td class="mono num" [attr.data-label]="tx().summaries.balance">{{ s.average.balance | chf }}</td>
                       <td class="bars-col"></td>
                     </tr>
                   }
@@ -124,19 +124,19 @@
   }
 
   @case ('people') {
-    <div class="choices" role="group" aria-label="Période">
-      <span class="muted small">Période</span>
+    <div class="choices" role="group" [attr.aria-label]="tx().summaries.period">
+      <span class="muted small">{{ tx().summaries.period }}</span>
       @for (r of peopleRanges; track r.key) {
-        <button type="button" class="chip" [class.on]="peopleRange() === r" [attr.aria-pressed]="peopleRange() === r" (click)="peopleRange.set(r)">{{ r.label }}</button>
+        <button type="button" class="chip" [class.on]="peopleRange() === r" [attr.aria-pressed]="peopleRange() === r" (click)="peopleRange.set(r)">{{ r.label() }}</button>
       }
     </div>
     @switch (people().state) {
       @case ('error') {
-        <p class="problem">Les statistiques n’ont pas pu être chargées.</p>
+        <p class="problem">{{ tx().summaries.statsFailed }}</p>
       }
       @default {
         @if (people().state === 'loading' && people().list.length === 0) {
-          <p class="muted">Chargement…</p>
+          <p class="muted">{{ tx().common.loading }}</p>
         }
         <div class="people" [class.stale]="people().state === 'loading'">
           @for (p of people().list; track p.user.username) {
@@ -150,37 +150,37 @@
               </div>
               @if (p.stats; as st) {
                 <dl class="facts">
-                  <dt>Dossiers gérés</dt><dd class="mono">{{ st.folders?.length ?? 0 }}</dd>
-                  <dt>Honoraires saisis</dt><dd class="mono">{{ st.honorariesTotal | chf }}</dd>
-                  <dt>Encaissé</dt><dd class="mono">{{ st.incomesTotal | chf }}</dd>
+                  <dt>{{ tx().summaries.folders }}</dt><dd class="mono">{{ st.folders?.length ?? 0 }}</dd>
+                  <dt>{{ tx().summaries.honoraries }}</dt><dd class="mono">{{ st.honorariesTotal | chf }}</dd>
+                  <dt>{{ tx().summaries.cashed }}</dt><dd class="mono">{{ st.incomesTotal | chf }}</dd>
                   @if (!people().onlyMe) {
-                    <dt>Part des encaissements</dt><dd class="mono">{{ share(p) }} %</dd>
+                    <dt>{{ tx().summaries.share }}</dt><dd class="mono">{{ share(p) }} %</dd>
                   }
                 </dl>
                 @if (!people().onlyMe) {
                   <div class="share-bar" aria-hidden="true"><div [style.width.%]="share(p)"></div></div>
                 }
                 @if (st.folders?.length) {
-                  <span class="muted small">Dossiers</span>
+                  <span class="muted small">{{ tx().summaries.folderList }}</span>
                   <ul class="folders">
                     @for (f of st.folders!.slice(0, 8); track f.id) {
                       <li><a [routerLink]="['/dossiers', f.id]">{{ f.name }}</a></li>
                     }
                   </ul>
                   @if ((st.folders?.length ?? 0) > 8) {
-                    <span class="muted small">et {{ (st.folders?.length ?? 0) - 8 }} autres</span>
+                    <span class="muted small">{{ tx().summaries.others((st.folders?.length ?? 0) - 8) }}</span>
                   }
                 }
               } @else {
-                <p class="muted small">Statistiques indisponibles.</p>
+                <p class="muted small">{{ tx().summaries.noStats }}</p>
               }
             </section>
           }
         </div>
         <p class="muted small note">
-          Un dossier compte pour la personne inscrite comme « géré par » ; honoraires saisis et encaissements de la période sur ses dossiers.
+          {{ tx().summaries.peopleNote }}
           @if (people().onlyMe) {
-            Seules vos propres statistiques sont affichées : la liste des utilisateurs demande le droit d’administration.
+            {{ tx().summaries.onlyMe }}
           }
         </p>
       }
@@ -189,39 +189,38 @@
 
   @case ('statements') {
     <section class="card statement" aria-labelledby="st-title">
-      <h2 id="st-title">Relevés d’une période</h2>
-      <div class="choices" role="group" aria-label="Période">
+      <h2 id="st-title">{{ tx().summaries.statements }}</h2>
+      <div class="choices" role="group" [attr.aria-label]="tx().summaries.period">
         @for (r of presets; track r.key) {
-          <button type="button" class="chip" [class.on]="isPreset(r)" [attr.aria-pressed]="isPreset(r)" (click)="pickPreset(r)">{{ r.label }}</button>
+          <button type="button" class="chip" [class.on]="isPreset(r)" [attr.aria-pressed]="isPreset(r)" (click)="pickPreset(r)">{{ r.label() }}</button>
         }
       </div>
       <form class="range" (ngSubmit)="applyRange()">
-        <div class="field"><label for="s-from">Du</label><input id="s-from" name="from" type="date" class="input" [(ngModel)]="statementFrom" /></div>
-        <div class="field"><label for="s-to">Au</label><input id="s-to" name="to" type="date" class="input" [(ngModel)]="statementTo" /></div>
-        <button type="submit" class="btn">Afficher</button>
+        <div class="field"><label for="s-from">{{ tx().summaries.from }}</label><input id="s-from" name="from" type="date" class="input" [(ngModel)]="statementFrom" /></div>
+        <div class="field"><label for="s-to">{{ tx().summaries.to }}</label><input id="s-to" name="to" type="date" class="input" [(ngModel)]="statementTo" /></div>
+        <button type="submit" class="btn">{{ tx().summaries.show }}</button>
       </form>
       @switch (statement().state) {
         @case ('error') {
-          <p class="problem">Les chiffres de la période n’ont pas pu être lus.</p>
+          <p class="problem">{{ tx().summaries.statementFailed }}</p>
         }
         @case ('ready') {
           <dl class="facts">
-            <dt>Entrées <span class="muted">· {{ statement().incomeCount }} encaissements</span></dt><dd class="mono">{{ statement().incomes | chf }}</dd>
-            <dt>TVA due ({{ statement().rate }} %)</dt><dd class="mono">{{ statement().vat | chf }}</dd>
-            <dt>Sorties <span class="muted">· {{ statement().expenseCount }} paiements</span></dt><dd class="mono">{{ statement().expenses | chf }}</dd>
+            <dt>{{ tx().summaries.incomes }} <span class="muted">· {{ tx().summaries.receipts(statement().incomeCount) }}</span></dt><dd class="mono">{{ statement().incomes | chf }}</dd>
+            <dt>{{ tx().summaries.vatDue(statement().rate) }}</dt><dd class="mono">{{ statement().vat | chf }}</dd>
+            <dt>{{ tx().summaries.expenses }} <span class="muted">· {{ tx().summaries.payments(statement().expenseCount) }}</span></dt><dd class="mono">{{ statement().expenses | chf }}</dd>
           </dl>
         }
         @default {
-          <p class="muted">Calcul…</p>
+          <p class="muted">{{ tx().summaries.computing }}</p>
         }
       }
       <p class="muted small">
-        Du {{ statementRange().from | swissDate }} au {{ statementRange().to | swissDate }} : entrées (factures et provisions encaissées, avec la TVA due),
-        puis les sorties du bureau dès la page suivante.
+        {{ tx().summaries.statementNote(statementRange().from | swissDate, statementRange().to | swissDate) }}
       </p>
-      <button type="button" class="btn btn-primary" [disabled]="printing()" (click)="download()">{{ printing() ? 'Préparation du PDF…' : 'Ouvrir le PDF' }}</button>
+      <button type="button" class="btn btn-primary" [disabled]="printing()" (click)="download()">{{ printing() ? tx().summaries.preparingPdf : tx().summaries.openPdf }}</button>
       @if (printed(); as name) {
-        <p class="done small" role="status">{{ name }} produit à la demande, rien n’est stocké.</p>
+        <p class="done small" role="status">{{ tx().summaries.printed(name) }}</p>
       }
       @if (printError(); as message) {
         <p class="problem" role="alert">{{ message }}</p>

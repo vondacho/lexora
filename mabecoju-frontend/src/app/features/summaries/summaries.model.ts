@@ -1,13 +1,10 @@
 import { Month, YearOverview } from '../../api/generated';
 import { fromCents, toCents } from '../../shared/money';
+import { monthNames } from '../../i18n/i18n';
 
 const MONTHS: Month[] = [
   'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
   'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER',
-];
-const NAMES = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
 ];
 
 export interface MonthRow {
@@ -60,7 +57,7 @@ export function yearSummary(years: YearOverview[], year: number, today: string):
   });
   const max = Math.max(1, ...raw.map((r) => Math.max(r.incomes, r.expenses)));
   const rows = raw.map((r, i) => ({
-    label: NAMES[i],
+    label: monthNames()[i],
     advances: fromCents(r.advances),
     invoices: fromCents(r.invoices),
     incomes: fromCents(r.incomes),

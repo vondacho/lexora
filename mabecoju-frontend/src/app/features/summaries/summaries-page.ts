@@ -10,13 +10,14 @@ import { ChfPipe, SwissDatePipe } from '../../shared/format';
 import { fromCents, todayIso, toCents } from '../../shared/money';
 import { blobProblemMessage } from '../../shared/problem';
 import { shiftMonth } from '../expenses/expenses.model';
+import { texts } from '../../i18n/i18n';
 import { change, yearSummary } from './summaries.model';
 
 type Tab = 'overview' | 'people' | 'statements';
 
 interface Range {
   key: string;
-  label: string;
+  label: () => string;
   from: string;
   to: string;
 }
@@ -47,6 +48,7 @@ export class SummariesPage {
 
   protected readonly today = todayIso();
   private readonly thisYear = Number(this.today.slice(0, 4));
+  protected readonly tx = texts;
   protected readonly can = {
     overview: this.auth.hasGrant('booking:overview'),
     people: this.auth.hasGrant('booking:statistics_search'),
@@ -54,10 +56,10 @@ export class SummariesPage {
   };
   protected readonly tabs = (
     [
-      { value: 'overview', label: 'Aperçu mensuel', allowed: this.can.overview },
-      { value: 'people', label: 'Par personne', allowed: this.can.people },
-      { value: 'statements', label: 'Relevés PDF', allowed: this.can.statements },
-    ] as { value: Tab; label: string; allowed: boolean }[]
+      { value: 'overview', allowed: this.can.overview },
+      { value: 'people', allowed: this.can.people },
+      { value: 'statements', allowed: this.can.statements },
+    ] as { value: Tab; allowed: boolean }[]
   ).filter((t) => t.allowed);
 
   private readonly route = inject(ActivatedRoute);
@@ -91,11 +93,11 @@ export class SummariesPage {
 
   // ----- per person -----------------------------------------------------------------------------------------
   protected readonly peopleRanges: Range[] = [
-    { key: 'year', label: `Année ${this.thisYear}`, from: `${this.thisYear}-01-01`, to: `${this.thisYear}-12-31` },
-    { key: 'last', label: `Année ${this.thisYear - 1}`, from: `${this.thisYear - 1}-01-01`, to: `${this.thisYear - 1}-12-31` },
+    { key: 'year', label: () => texts().summaries.ranges.yearOf(this.thisYear), from: `${this.thisYear}-01-01`, to: `${this.thisYear}-12-31` },
+    { key: 'last', label: () => texts().summaries.ranges.yearOf(this.thisYear - 1), from: `${this.thisYear - 1}-01-01`, to: `${this.thisYear - 1}-12-31` },
     {
       key: '12m',
-      label: '12 derniers mois',
+      label: () => texts().summaries.ranges.last12,
       from: shiftMonth(this.today.slice(0, 7), -11) + '-01',
       to: lastDayOf(this.today.slice(0, 7)),
     },
@@ -114,15 +116,15 @@ export class SummariesPage {
     const previous = shiftMonth(month, -1);
     const half = Number(month.slice(5)) <= 6 ? 1 : 2;
     return [
-      { key: 'month', label: 'Mois en cours', from: month + '-01', to: lastDayOf(month) },
-      { key: 'previous', label: 'Mois précédent', from: previous + '-01', to: lastDayOf(previous) },
+      { key: 'month', label: () => texts().summaries.ranges.month, from: month + '-01', to: lastDayOf(month) },
+      { key: 'previous', label: () => texts().summaries.ranges.previous, from: previous + '-01', to: lastDayOf(previous) },
       {
         key: 'half',
-        label: half === 1 ? '1er semestre' : '2e semestre',
+        label: () => (half === 1 ? texts().summaries.ranges.half1 : texts().summaries.ranges.half2),
         from: `${this.thisYear}-${half === 1 ? '01' : '07'}-01`,
         to: `${this.thisYear}-${half === 1 ? '06-30' : '12-31'}`,
       },
-      { key: 'year', label: `Année ${this.thisYear}`, from: `${this.thisYear}-01-01`, to: `${this.thisYear}-12-31` },
+      { key: 'year', label: () => texts().summaries.ranges.yearOf(this.thisYear), from: `${this.thisYear}-01-01`, to: `${this.thisYear}-12-31` },
     ];
   })();
   protected statementFrom = this.presets[1].from;
@@ -205,7 +207,7 @@ export class SummariesPage {
       openPdf(pdf, name);
       this.printed.set(name);
     } catch (e: unknown) {
-      this.printError.set(await blobProblemMessage(e, 'Le relevé n’a pas pu être produit.'));
+      this.printError.set(await blobProblemMessage(e, texts().summaries.pdfFailed));
     } finally {
       this.printing.set(false);
     }
