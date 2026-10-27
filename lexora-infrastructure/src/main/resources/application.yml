@@ -39,8 +39,8 @@ lexora:
     # LEXORA_BRANDING_OFFICE_NAME. Optional ones are commented out. See the README for an example.
     product-name: Lexora
     # office-name: Étude Exemple        # the product name when absent
-    # tagline-fr: juriste & médiatrice
-    # tagline-en: lawyer & mediator      # the French tagline when absent
+    tagline-fr: Marna Müller-Bessi, juriste & médiatrice
+    tagline-en: Marna Müller-Bessi, lawyer & mediator      # the French tagline when absent
     accent-color: "#1d5fb4"
     # accent-dark-color: "#164a8c"      # derived from accent-color when absent
     # logo: file:/etc/lexora/logo.svg     # SVG, PNG, JPEG or WebP; a monogram in the accent colour when absent
