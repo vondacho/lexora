@@ -1,0 +1,188 @@
+<a routerLink="/a-traiter" class="back">← À traiter</a>
+<h1>Débiteurs &amp; rappels</h1>
+<p class="muted intro">Choisissez un impayé, ajustez la lettre, imprimez : le rappel est enregistré avec le montant encore dû.</p>
+
+@if (done(); as d) {
+  <div class="done" role="status">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>
+    <span class="done-text">
+      <strong>Rappel n° {{ d.degree }} pour {{ d.reference }} enregistré.</strong>
+      @if (d.printFailed) {
+        <span class="warn"> {{ d.printFailed }}</span>
+      } @else {
+        Le PDF s’est ouvert dans un nouvel onglet.
+      }
+    </span>
+    @if (d.printFailed) {
+      <button type="button" class="btn btn-small" [disabled]="busy()" (click)="reprint()">Réessayer l’impression</button>
+    }
+    @if (nextDebt(); as next) {
+      <button type="button" class="btn btn-small" (click)="goNext()">Impayé suivant : {{ next.reference }} · {{ next.folderName }}</button>
+    }
+    <a routerLink="/a-traiter">Retour à « À traiter »</a>
+  </div>
+}
+
+<div class="steps">
+  <section class="card list" aria-labelledby="docs-title">
+    <h2 id="docs-title">1 · Impayé</h2>
+    <p class="muted small">Factures et provisions échues, les plus anciennes d’abord</p>
+    @switch (overview().state) {
+      @case ('loading') {
+        @if (!debts().length) {
+          <p class="muted">Chargement…</p>
+        }
+      }
+      @case ('error') {
+        <p class="problem">Les impayés n’ont pas pu être chargés.</p>
+      }
+    }
+    @if (overview().state !== 'error') {
+      @if (debts().length === 0 && overview().state === 'ready') {
+        <p class="muted">Rien à relancer : aucune facture ni provision échue.</p>
+      }
+      <ul class="docs">
+        @for (d of debts(); track d.reference) {
+          <li>
+            <button type="button" class="doc" [class.active]="current()?.reference === d.reference" [attr.aria-pressed]="current()?.reference === d.reference" (click)="pick(d)">
+              <span class="badge" [class.request]="d.kind === 'request'" aria-hidden="true">{{ d.kind === 'invoice' ? 'F' : 'P' }}</span>
+              <span class="doc-main">
+                <span class="doc-title">{{ d.reference }} · {{ d.folderName }}</span>
+                <span class="doc-sub">{{ d.daysOverdue }} j de retard · {{ recallText(d) }}</span>
+              </span>
+              <span class="doc-side">
+                <span class="mono">{{ d.remaining | chf }}</span>
+                @if (sent().has(d.reference)) {
+                  <span class="sent">rappel envoyé</span>
+                }
+              </span>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  @if (current(); as debt) {
+    <section #letterSection class="card letter" aria-labelledby="letter-title">
+      <h2 id="letter-title">2 · Lettre · rappel n° {{ nextDegree() }} pour {{ debt.reference }}</h2>
+      @switch (letterData().state) {
+        @case ('loading') {
+          <p class="muted">Chargement du document…</p>
+        }
+        @case ('error') {
+          <p class="problem">Le document n’a pas pu être chargé.</p>
+        }
+        @case ('ready') {
+          @if (letter(); as l) {
+            <dl class="facts">
+              <div><dt>Envoi du</dt><dd>{{ l.recalled.doc.date?.split('-')?.reverse()?.join('.') }}</dd></div>
+              <div><dt>Échu le</dt><dd>{{ l.recalled.doc.dueDate?.split('-')?.reverse()?.join('.') }}</dd></div>
+              <div><dt>Encore dû</dt><dd class="mono">{{ l.recalled.doc.remainingSum | chf }}</dd></div>
+              <div><dt>Rappels précédents</dt><dd>{{ previousRecalls() }}</dd></div>
+            </dl>
+            <a class="folder-link" [routerLink]="['/dossiers', debt.folderId]">Ouvrir le dossier {{ debt.folderName }}</a>
+
+            @if (modelList().length === 0 && models().state === 'ready') {
+              <p class="problem">Aucun modèle de rappel : créez-en un dans « Modèles de lettres ».</p>
+            } @else {
+              <div class="field">
+                <label for="tpl">Modèle</label>
+                <select id="tpl" class="input" [ngModel]="model()?.id" (ngModelChange)="pickModel(+$event)">
+                  @for (m of modelList(); track m.id) {
+                    <option [value]="m.id">{{ m.name }}</option>
+                  }
+                </select>
+              </div>
+              <p class="muted small">Proposé d’après le numéro du rappel ; le texte n’est modifié que pour cet envoi.</p>
+              <div class="field">
+                <label for="txt">Texte</label>
+                <textarea #letterText id="txt" class="input text" rows="12" [ngModel]="text()" (ngModelChange)="editText($event)"></textarea>
+              </div>
+              <div class="chips" role="group" aria-label="Insérer un champ">
+                <span class="muted small">Insérer :</span>
+                @for (c of chips; track c.token) {
+                  <button type="button" class="chip" [title]="c.token" (click)="insert(c.token)">{{ c.label }}</button>
+                }
+                <button type="button" class="link small" (click)="resetText()">Rétablir le texte du modèle</button>
+              </div>
+              <fieldset class="options">
+                <legend>Options</legend>
+                <label class="check">
+                  <input type="checkbox" [disabled]="recipients().length < 2" [ngModel]="merge()" (ngModelChange)="merge.set($event)" />
+                  Une seule lettre à {{ recipients().length > 1 ? 'tous les clients' : 'plusieurs clients' }}
+                </label>
+                <label class="check">
+                  Annexes
+                  <select class="input small-select" [ngModel]="attachments()" (ngModelChange)="attachments.set(+$event)">
+                    <option [value]="0">aucune</option>
+                    <option [value]="1">une</option>
+                    <option [value]="2">deux</option>
+                    <option [value]="3">trois</option>
+                  </select>
+                </label>
+              </fieldset>
+            }
+          }
+        }
+      }
+    </section>
+
+    <section class="card preview-card" aria-labelledby="preview-title">
+      <div class="preview-head">
+        <h2 id="preview-title">3 · Aperçu</h2>
+        <span class="muted small">{{ copies().length }} exemplaire{{ copies().length > 1 ? 's' : '' }}</span>
+      </div>
+      @if (preview(); as p) {
+        @if (copies()[0]; as first) {
+          <div class="page" aria-label="Aperçu de la lettre">
+            <div class="addresses">
+              @for (a of first.addresses; track $index) {
+                <div class="address">
+                  @for (line of a; track $index) {
+                    <div>{{ line }}</div>
+                  }
+                </div>
+              }
+            </div>
+            <div class="date">Neuchâtel, le {{ today.split('-').reverse().join('.') }}</div>
+            <div class="title">{{ p.title }}</div>
+            @if (p.html) {
+              <div class="body" [innerHTML]="p.body"></div>
+            } @else {
+              <div class="body plain">{{ p.body }}</div>
+            }
+            @if (attachments() > 0) {
+              <div class="annex"><u>{{ attachments() > 1 ? 'Annexes' : 'Annexe' }}</u> : ment.</div>
+            }
+          </div>
+        }
+        <ul class="slips">
+          @for (c of copies(); track $index) {
+            <li>
+              <span>{{ c.recipient ? 'Exemplaire de ' + (c.recipient.fullName || c.recipient.lastName) : 'Lettre commune' }}</span>
+              <span class="mono">{{ c.slipCents > 0 ? 'bulletin QR · CHF ' + (c.slipCents / 100 | chf) : 'sans bulletin (rien dû)' }}</span>
+            </li>
+          }
+        </ul>
+        <p class="muted small">Aperçu indicatif ; le PDF reprend l’en-tête, la signature et les bulletins QR du bureau.</p>
+        @if (error(); as message) {
+          <p class="problem" role="alert">{{ message }}</p>
+        }
+        @if (canRecall(debt)) {
+          <button type="button" class="btn btn-primary create" [disabled]="busy() || !model()" (click)="createAndPrint()">
+            {{ busy() ? 'Enregistrement…' : 'Créer le rappel n° ' + nextDegree() + ' et imprimer' }}
+          </button>
+          <p class="muted small">Le rappel est enregistré au {{ today.split('-').reverse().join('.') }} pour {{ letter()?.recalled?.doc?.remainingSum | chf }} ; il apparaît dans le fil du dossier.</p>
+        } @else {
+          <p class="muted">Vos droits ne permettent pas de créer ce rappel.</p>
+        }
+        @if ((letter()?.recalled?.doc?.recalls?.length ?? 0) > 0 && canPrint(debt)) {
+          <button type="button" class="link small" [disabled]="busy()" (click)="reprint()">Réimprimer le dernier rappel avec ce texte</button>
+        }
+      } @else {
+        <p class="muted">L’aperçu s’affiche une fois le document chargé.</p>
+      }
+    </section>
+  }
+</div>

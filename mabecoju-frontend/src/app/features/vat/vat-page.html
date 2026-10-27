@@ -1,0 +1,200 @@
+<div class="head">
+  <div>
+    <h1>Décompte TVA</h1>
+    <p class="muted sub">Méthode des taux de la dette fiscale nette · TVA due sur les montants encaissés.</p>
+  </div>
+  <div class="periods" role="group" aria-label="Période">
+    <button type="button" class="icon-btn" (click)="moveYear(-1)" aria-label="Année précédente">‹</button>
+    @for (c of choices(); track c.kind) {
+      <button type="button" class="chip" [class.on]="period().kind === c.kind" [attr.aria-pressed]="period().kind === c.kind" (click)="pick(c)">{{ label(c) }}</button>
+    }
+    <button type="button" class="chip" [class.on]="period().kind === 'custom'" [attr.aria-pressed]="period().kind === 'custom'" (click)="chooseCustom()">Période libre</button>
+    <button type="button" class="icon-btn" (click)="moveYear(1)" aria-label="Année suivante">›</button>
+  </div>
+</div>
+
+@if (period().kind === 'custom') {
+  <form class="custom card" (ngSubmit)="applyCustom()">
+    <div class="field"><label for="t-from">Du</label><input id="t-from" name="from" type="date" class="input" [(ngModel)]="customFrom" /></div>
+    <div class="field"><label for="t-to">Au</label><input id="t-to" name="to" type="date" class="input" [(ngModel)]="customTo" /></div>
+    <button type="submit" class="btn">Afficher</button>
+    <p class="muted small">Le décompte AFC se fait par semestre ; une période libre sert à vérifier un mois ou à préparer une provision.</p>
+  </form>
+}
+
+@if (flash(); as message) {
+  <p class="flash" role="status">{{ message }}</p>
+}
+
+@switch (state()) {
+  @case ('loading') {
+    <p class="muted">Calcul…</p>
+  }
+  @case ('error') {
+    <p class="problem">Le décompte n’a pas pu être calculé.</p>
+  }
+  @case ('ready') {
+    @if (report(); as r) {
+      <div class="layout">
+        <section class="card calc" aria-labelledby="calc-title">
+          <div class="calc-head">
+            <h2 id="calc-title">Calcul · {{ label(period()) }}</h2>
+            <span class="status" [attr.data-tone]="status().tone">{{ status().text }}</span>
+          </div>
+          <p class="muted small">
+            Encaissements du {{ period().from | swissDate }} au {{ period().to | swissDate }}
+            @if (period().kind !== 'custom') {
+              · décompte à remettre et payer d’ici au {{ due() | swissDate }}
+            }
+          </p>
+          <dl class="sum">
+            <dt>Factures encaissées <span class="muted">· {{ r.invoicePayments?.length ?? 0 }} paiements</span></dt>
+            <dd class="mono">{{ r.invoicePaymentsTotal | chf }}</dd>
+            <dt>Provisions encaissées <span class="muted">· {{ r.advances?.length ?? 0 }} avances</span></dt>
+            <dd class="mono">+ {{ r.advancesTotal | chf }}</dd>
+            <dt class="strong">Chiffre d’affaires encaissé, TVA comprise</dt>
+            <dd class="mono strong">{{ r.total | chf }}</dd>
+            <dt>Taux de la dette fiscale nette</dt>
+            <dd>
+              @if (editingRate()) {
+                <form class="rate" (ngSubmit)="saveRate()">
+                  <label for="t-rate" class="visually-hidden">Taux en %</label>
+                  <input id="t-rate" name="rate" type="number" min="0" max="20" step="0.1" class="input" [(ngModel)]="rateDraft" />
+                  <button type="submit" class="btn btn-small" [disabled]="busy()">OK</button>
+                  <button type="button" class="btn btn-small" (click)="editingRate.set(false)">Annuler</button>
+                </form>
+              } @else {
+                <span class="mono">× {{ r.vatRatePercent }} %</span>
+                @if (can.rate && !paid()) {
+                  <button type="button" class="link" (click)="editRate()">Modifier</button>
+                }
+              }
+            </dd>
+          </dl>
+          <div class="due">
+            <span>TVA due à l’AFC</span>
+            <span class="mono big">{{ r.vatDue | chf }}</span>
+            <span class="mono muted small">{{ r.total | chf }} × {{ r.vatRatePercent }} % = {{ r.vatDue | chf }}</span>
+          </div>
+
+          @if (paid(); as v) {
+            <div class="paid" role="status">
+              <span>
+                <strong>Payée le {{ v.paidOn | swissDate }}</strong> · <span class="mono">{{ v.amount | chf }}</span>
+                <span class="muted small block">Calculée sur {{ v.revenue | chf }} encaissés au taux de {{ v.vatRatePercent }} %.</span>
+                @if (v.expenseId) {
+                  <a class="small block" routerLink="/depenses" [queryParams]="{ mois: v.paidOn.slice(0, 7) }">Comptabilisée dans les dépenses {{ monthOf(v.paidOn) }}</a>
+                } @else {
+                  <span class="small block warn-text">Enregistrée avant la comptabilisation automatique : absente des dépenses. Supprimez-la et enregistrez-la à nouveau pour l’y ajouter.</span>
+                }
+              </span>
+              @if (can.pay) {
+                <button type="button" class="btn btn-small btn-warn" [disabled]="busy()" (click)="removePayment()">{{ confirmDelete() ? 'Confirmer : paiement et dépense' : 'Supprimer' }}</button>
+              }
+            </div>
+            @if (change(); as c) {
+              <p class="warning">
+                Les livres ont changé depuis le paiement : {{ c.revenue > 0 ? '+' : '' }}{{ c.revenue | chf }} d’encaissements, soit
+                {{ c.vat | chf }} de TVA à corriger au prochain décompte.
+              </p>
+            }
+          } @else if (overlaps().length) {
+            <p class="warning">
+              Cette période chevauche la TVA déjà payée pour
+              @for (o of overlaps(); track o.id; let last = $last) {
+                {{ o.from | swissDate }} – {{ o.to | swissDate }}{{ last ? '' : ', ' }}
+              }
+              : un paiement pour elle serait refusé.
+            </p>
+          } @else if (can.pay) {
+            <form class="pay" (ngSubmit)="record()" aria-label="Enregistrer le paiement de la TVA">
+              <div class="field"><label for="t-paid">Payée le</label><input id="t-paid" name="paidOn" type="date" class="input" [min]="period().from" [(ngModel)]="payDate" /></div>
+              <div class="field"><label for="t-amount">Montant payé</label><input id="t-amount" name="amount" type="number" min="0" step="0.01" class="input" [(ngModel)]="payAmount" /></div>
+              <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ busy() ? 'Enregistrement…' : 'Enregistrer le paiement' }}</button>
+              <p class="muted small full">
+                @if (period().to >= today) {
+                  La période n’est pas terminée.
+                }
+                L’encaissé et le taux sont figés avec le paiement : une correction ultérieure des livres ne le modifie pas.
+                Le montant est aussi comptabilisé dans les dépenses du bureau.
+              </p>
+            </form>
+          }
+          @if (error(); as message) {
+            <p class="problem" role="alert">{{ message }}</p>
+          }
+
+          @if (figures()?.inputTax !== null) {
+            <p class="muted small">
+              Avec ce taux forfaitaire, la TVA payée sur les dépenses ({{ figures()?.inputTax | chf }} sur la période) n’est pas déduite : elle est déjà comprise dans le taux.
+            </p>
+          }
+          <div class="actions">
+            <button type="button" class="btn" (click)="printStatement()">Relevé PDF de la période</button>
+            <button type="button" class="btn" (click)="copyFigures()">Copier les chiffres pour le formulaire AFC</button>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="months-title">
+          <h2 id="months-title">Mois par mois</h2>
+          <p class="muted small">À mettre de côté : {{ monthlyReserve() | chf }} par mois en moyenne.</p>
+          <ul class="months">
+            @for (m of months(); track m.key) {
+              <li>
+                <div class="month-line"><span>{{ m.label }}</span><span class="mono">{{ m.total | chf }} <span class="muted">→ TVA {{ m.vat | chf }}</span></span></div>
+                <div class="bar" aria-hidden="true"><div [style.width.%]="m.ratio * 100"></div></div>
+              </li>
+            }
+          </ul>
+          <h3>TVA payée</h3>
+          @if (payments().length === 0) {
+            <p class="muted small">Aucun paiement enregistré.</p>
+          } @else {
+            <ul class="history">
+              @for (v of payments(); track v.id) {
+                <li>
+                  <button type="button" class="history-btn" (click)="openPayment(v)">
+                    <span>{{ v.from | swissDate }} – {{ v.to | swissDate }}</span>
+                    <span class="mono">{{ v.amount | chf }} <span class="muted">le {{ v.paidOn | swissDate: false }}</span></span>
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      </div>
+
+      <section class="card list" aria-labelledby="list-title">
+        <div class="list-head">
+          <h2 id="list-title">Encaissements de la période</h2>
+          <div class="tabs" role="tablist" aria-label="Type d’encaissement">
+            <button type="button" role="tab" [attr.aria-selected]="listTab() === 'invoices'" (click)="listTab.set('invoices')">Factures · {{ r.invoicePayments?.length ?? 0 }}</button>
+            <button type="button" role="tab" [attr.aria-selected]="listTab() === 'advances'" (click)="listTab.set('advances')">Provisions · {{ r.advances?.length ?? 0 }}</button>
+          </div>
+        </div>
+        @if (lines().length === 0) {
+          <p class="muted">Aucun encaissement.</p>
+        } @else {
+          <div class="table-box">
+            <table class="incomes">
+              <thead>
+                <tr><th scope="col">Date</th><th scope="col">Dossier</th><th scope="col">Document</th><th scope="col">Moyen</th><th scope="col" class="num">Montant</th></tr>
+              </thead>
+              <tbody>
+                @for (l of lines(); track l.id) {
+                  <tr>
+                    <td class="mono" data-label="Date">{{ l.date | swissDate }}</td>
+                    <td data-label="Dossier"><a [routerLink]="['/dossiers', l.folderId]">{{ l.folderName }}</a></td>
+                    <td class="mono" data-label="Document">{{ l.documentId ? (listTab() === 'invoices' ? 'F-' : 'P-') + l.documentId : 'spontanée' }}</td>
+                    <td data-label="Moyen"><span class="means">{{ means(l) }}</span></td>
+                    <td class="mono num" data-label="Montant">{{ l.amount | chf }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+    }
+  }
+}

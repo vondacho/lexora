@@ -1,0 +1,94 @@
+<section class="card timeline" aria-labelledby="timeline-title">
+  <div class="head">
+    <h2 id="timeline-title">Fil du dossier</h2>
+    <div class="filters" role="group" aria-label="Filtrer le fil">
+      @for (f of filters; track f.value) {
+        <button type="button" class="chip" [class.on]="filter() === f.value" [attr.aria-pressed]="filter() === f.value" (click)="filter.set(f.value)">
+          {{ f.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (canRecord()) {
+    <form class="quick" (ngSubmit)="record()" aria-label="Saisir une séance">
+      <div class="field date">
+        <label for="q-date">Date</label>
+        <input id="q-date" name="date" type="date" class="input" required [(ngModel)]="date" />
+      </div>
+      <div class="field minutes">
+        <label for="q-min">Minutes</label>
+        <input #minutesInput id="q-min" name="minutes" type="number" min="1" step="5" class="input" required [ngModel]="minutes" (ngModelChange)="onMinutes($event)" />
+      </div>
+      <div class="field wording">
+        <label for="q-label">Libellé</label>
+        <input id="q-label" name="description" class="input" list="q-wordings" maxlength="1024" [ngModel]="description()" (ngModelChange)="onDescription($event)" />
+        <datalist id="q-wordings">
+          @for (w of wordings(); track w) {
+            <option [value]="w"></option>
+          }
+        </datalist>
+      </div>
+      <div class="field tariff">
+        <label for="q-tariff">Tarif</label>
+        <select id="q-tariff" name="tariff" class="input" [ngModel]="tariff()" (ngModelChange)="tariff.set($event)">
+          <option value="meeting">Séance · {{ settings().meetingHourlyRate | chf }}/h</option>
+          <option value="standard">Autre · {{ settings().standardHourlyRate | chf }}/h</option>
+        </select>
+      </div>
+      <div class="field total">
+        <span class="label">Montant</span>
+        <span class="mono">{{ amount() | chf }}</span>
+      </div>
+      <button type="submit" class="btn btn-primary" [disabled]="saving() || minutesValue() <= 0">
+        {{ saving() ? 'Ajout…' : 'Ajouter la séance' }}
+      </button>
+    </form>
+    @if (error(); as message) {
+      <p class="problem" role="alert">{{ message }}</p>
+    }
+    @if (saved(); as message) {
+      <p class="saved" role="status">{{ message }}</p>
+    }
+  }
+
+  @for (m of months(); track m.key) {
+    <div class="month">
+      <div class="month-head">
+        <h3>{{ m.label }}</h3>
+        <span class="muted">{{ m.summary }}</span>
+      </div>
+      <ol class="items">
+        @for (t of m.items; track t.key) {
+          <li>
+            <button type="button" class="row" [class.selected]="selectedKey() === t.key" [attr.aria-pressed]="selectedKey() === t.key" (click)="selectItem.emit(t)">
+              <span class="date mono">{{ t.date | swissDate: false }}</span>
+              <span class="dot" [attr.data-letter]="t.letter" aria-hidden="true">{{ t.letter }}</span>
+              <span class="main">
+                <span class="title">{{ t.title }}</span>
+                @if (t.sub) {
+                  <span class="sub">{{ t.sub }}</span>
+                }
+                @if (t.effects.length) {
+                  <span class="effects">
+                    @for (e of t.effects; track e.text) {
+                      <span class="effect" [attr.data-tone]="e.tone">{{ e.text }}</span>
+                    }
+                  </span>
+                }
+              </span>
+              <span class="side">
+                @if (t.amount !== null) {
+                  <span class="mono">{{ t.amount | chf }}</span>
+                }
+                <span class="status" [attr.data-tone]="t.tone">{{ t.status }}</span>
+              </span>
+            </button>
+          </li>
+        }
+      </ol>
+    </div>
+  } @empty {
+    <p class="muted">Rien à afficher pour ce filtre.</p>
+  }
+</section>

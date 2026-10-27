@@ -1,0 +1,231 @@
+<h1>Synthèses</h1>
+<p class="muted sub">Entrées et sorties du bureau, activité par personne, relevés imprimables.</p>
+
+@if (tabs.length === 0) {
+  <p class="card muted">Vos droits ne donnent accès à aucune synthèse.</p>
+} @else {
+  <div class="tabs" role="tablist" aria-label="Synthèses">
+    @for (t of tabs; track t.value) {
+      <button type="button" role="tab" [attr.aria-selected]="tab() === t.value" (click)="setTab(t.value)">{{ t.label }}</button>
+    }
+  </div>
+}
+
+@switch (tab()) {
+  @case ('overview') {
+    @switch (overview().state) {
+      @case ('loading') {
+        <p class="muted">Chargement…</p>
+      }
+      @case ('error') {
+        <p class="problem">L’aperçu n’a pas pu être chargé.</p>
+      }
+      @case ('ready') {
+        <div class="choices" role="group" aria-label="Année">
+          <span class="muted small">Année</span>
+          @for (y of yearChoices(); track y) {
+            <button type="button" class="chip" [class.on]="year() === y" [attr.aria-pressed]="year() === y" (click)="year.set(y)">{{ y }}</button>
+          }
+        </div>
+        @if (summary(); as s) {
+          <div class="tiles">
+            <div class="tile">
+              <span class="label">Entrées</span>
+              <span class="value">{{ s.total.incomes | chf }}</span>
+              <span class="note">
+                @if (incomeChange(); as c) {
+                  {{ c > 0 ? '+' : '' }}{{ c }} % sur la même période de {{ s.year - 1 }}
+                } @else {
+                  factures {{ s.total.invoices | chf }} · provisions {{ s.total.advances | chf }}
+                }
+              </span>
+            </div>
+            <div class="tile">
+              <span class="label">Sorties</span>
+              <span class="value">{{ s.total.expenses | chf }}</span>
+              <span class="note">dépenses payées du bureau</span>
+            </div>
+            <div class="tile">
+              <span class="label">Solde</span>
+              <span class="value" [class.ok]="s.total.balance >= 0" [class.warn]="s.total.balance < 0">{{ s.total.balance | chf }}</span>
+              <span class="note">entrées − sorties</span>
+            </div>
+            @if (vatDue() !== null) {
+              <div class="tile">
+                <span class="label">TVA due ({{ overview().rate }} %)</span>
+                <span class="value accent">{{ vatDue() | chf }}</span>
+                <span class="note">sur les entrées de l’année · <a routerLink="/tva">décompte</a></span>
+              </div>
+            }
+          </div>
+
+          <section class="card" aria-labelledby="ov-title">
+            <div class="section-head">
+              <h2 id="ov-title">Mois par mois · {{ s.year }}</h2>
+              <span class="legend small"><span class="dot in"></span>entrées <span class="dot out"></span>sorties</span>
+            </div>
+            <div class="table-box">
+              <table class="months">
+                <thead>
+                  <tr>
+                    <th scope="col">Mois</th>
+                    <th scope="col" class="num">Provisions</th>
+                    <th scope="col" class="num">Factures</th>
+                    <th scope="col" class="num">Entrées</th>
+                    <th scope="col" class="num">Sorties</th>
+                    <th scope="col" class="num">Solde</th>
+                    <th scope="col" class="bars-col">Comparaison</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (m of s.rows; track m.label) {
+                    <tr [class.future]="m.future">
+                      <td data-label="Mois">{{ m.label }}</td>
+                      <td class="mono num" data-label="Provisions">{{ m.advances | chf }}</td>
+                      <td class="mono num" data-label="Factures">{{ m.invoices | chf }}</td>
+                      <td class="mono num" data-label="Entrées">{{ m.incomes | chf }}</td>
+                      <td class="mono num" data-label="Sorties">{{ m.expenses | chf }}</td>
+                      <td class="mono num" data-label="Solde" [class.warn]="m.balance < 0" [class.ok]="m.balance > 0">{{ m.balance | chf }}</td>
+                      <td class="bars-col" aria-hidden="true">
+                        <div class="bar in" [style.width.%]="m.incomeRatio * 100"></div>
+                        <div class="bar out" [style.width.%]="m.expenseRatio * 100"></div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td>Total</td>
+                    <td class="mono num" data-label="Provisions">{{ s.total.advances | chf }}</td>
+                    <td class="mono num" data-label="Factures">{{ s.total.invoices | chf }}</td>
+                    <td class="mono num" data-label="Entrées">{{ s.total.incomes | chf }}</td>
+                    <td class="mono num" data-label="Sorties">{{ s.total.expenses | chf }}</td>
+                    <td class="mono num" data-label="Solde">{{ s.total.balance | chf }}</td>
+                    <td class="bars-col"></td>
+                  </tr>
+                  @if (s.monthsCounted > 0) {
+                    <tr class="average">
+                      <td>Moyenne par mois{{ s.monthsCounted < 12 ? ' (' + s.monthsCounted + ' mois)' : '' }}</td>
+                      <td class="mono num" data-label="Provisions">{{ s.average.advances | chf }}</td>
+                      <td class="mono num" data-label="Factures">{{ s.average.invoices | chf }}</td>
+                      <td class="mono num" data-label="Entrées">{{ s.average.incomes | chf }}</td>
+                      <td class="mono num" data-label="Sorties">{{ s.average.expenses | chf }}</td>
+                      <td class="mono num" data-label="Solde">{{ s.average.balance | chf }}</td>
+                      <td class="bars-col"></td>
+                    </tr>
+                  }
+                </tfoot>
+              </table>
+            </div>
+          </section>
+        }
+      }
+    }
+  }
+
+  @case ('people') {
+    <div class="choices" role="group" aria-label="Période">
+      <span class="muted small">Période</span>
+      @for (r of peopleRanges; track r.key) {
+        <button type="button" class="chip" [class.on]="peopleRange() === r" [attr.aria-pressed]="peopleRange() === r" (click)="peopleRange.set(r)">{{ r.label }}</button>
+      }
+    </div>
+    @switch (people().state) {
+      @case ('error') {
+        <p class="problem">Les statistiques n’ont pas pu être chargées.</p>
+      }
+      @default {
+        @if (people().state === 'loading' && people().list.length === 0) {
+          <p class="muted">Chargement…</p>
+        }
+        <div class="people" [class.stale]="people().state === 'loading'">
+          @for (p of people().list; track p.user.username) {
+            <section class="card person" [attr.aria-labelledby]="'person-' + p.user.username">
+              <div class="person-head">
+                <span class="avatar" aria-hidden="true">{{ initials(p.user) }}</span>
+                <div>
+                  <h2 [id]="'person-' + p.user.username">{{ fullName(p.user) }}</h2>
+                  <span class="muted small">{{ p.user.username }}</span>
+                </div>
+              </div>
+              @if (p.stats; as st) {
+                <dl class="facts">
+                  <dt>Dossiers gérés</dt><dd class="mono">{{ st.folders?.length ?? 0 }}</dd>
+                  <dt>Honoraires saisis</dt><dd class="mono">{{ st.honorariesTotal | chf }}</dd>
+                  <dt>Encaissé</dt><dd class="mono">{{ st.incomesTotal | chf }}</dd>
+                  @if (!people().onlyMe) {
+                    <dt>Part des encaissements</dt><dd class="mono">{{ share(p) }} %</dd>
+                  }
+                </dl>
+                @if (!people().onlyMe) {
+                  <div class="share-bar" aria-hidden="true"><div [style.width.%]="share(p)"></div></div>
+                }
+                @if (st.folders?.length) {
+                  <span class="muted small">Dossiers</span>
+                  <ul class="folders">
+                    @for (f of st.folders!.slice(0, 8); track f.id) {
+                      <li><a [routerLink]="['/dossiers', f.id]">{{ f.name }}</a></li>
+                    }
+                  </ul>
+                  @if ((st.folders?.length ?? 0) > 8) {
+                    <span class="muted small">et {{ (st.folders?.length ?? 0) - 8 }} autres</span>
+                  }
+                }
+              } @else {
+                <p class="muted small">Statistiques indisponibles.</p>
+              }
+            </section>
+          }
+        </div>
+        <p class="muted small note">
+          Un dossier compte pour la personne inscrite comme « géré par » ; honoraires saisis et encaissements de la période sur ses dossiers.
+          @if (people().onlyMe) {
+            Seules vos propres statistiques sont affichées : la liste des utilisateurs demande le droit d’administration.
+          }
+        </p>
+      }
+    }
+  }
+
+  @case ('statements') {
+    <section class="card statement" aria-labelledby="st-title">
+      <h2 id="st-title">Relevés d’une période</h2>
+      <div class="choices" role="group" aria-label="Période">
+        @for (r of presets; track r.key) {
+          <button type="button" class="chip" [class.on]="isPreset(r)" [attr.aria-pressed]="isPreset(r)" (click)="pickPreset(r)">{{ r.label }}</button>
+        }
+      </div>
+      <form class="range" (ngSubmit)="applyRange()">
+        <div class="field"><label for="s-from">Du</label><input id="s-from" name="from" type="date" class="input" [(ngModel)]="statementFrom" /></div>
+        <div class="field"><label for="s-to">Au</label><input id="s-to" name="to" type="date" class="input" [(ngModel)]="statementTo" /></div>
+        <button type="submit" class="btn">Afficher</button>
+      </form>
+      @switch (statement().state) {
+        @case ('error') {
+          <p class="problem">Les chiffres de la période n’ont pas pu être lus.</p>
+        }
+        @case ('ready') {
+          <dl class="facts">
+            <dt>Entrées <span class="muted">· {{ statement().incomeCount }} encaissements</span></dt><dd class="mono">{{ statement().incomes | chf }}</dd>
+            <dt>TVA due ({{ statement().rate }} %)</dt><dd class="mono">{{ statement().vat | chf }}</dd>
+            <dt>Sorties <span class="muted">· {{ statement().expenseCount }} paiements</span></dt><dd class="mono">{{ statement().expenses | chf }}</dd>
+          </dl>
+        }
+        @default {
+          <p class="muted">Calcul…</p>
+        }
+      }
+      <p class="muted small">
+        Du {{ statementRange().from | swissDate }} au {{ statementRange().to | swissDate }} : entrées (factures et provisions encaissées, avec la TVA due),
+        puis les sorties du bureau dès la page suivante.
+      </p>
+      <button type="button" class="btn btn-primary" [disabled]="printing()" (click)="download()">{{ printing() ? 'Préparation du PDF…' : 'Ouvrir le PDF' }}</button>
+      @if (printed(); as name) {
+        <p class="done small" role="status">{{ name }} produit à la demande, rien n’est stocké.</p>
+      }
+      @if (printError(); as message) {
+        <p class="problem" role="alert">{{ message }}</p>
+      }
+    </section>
+  }
+}

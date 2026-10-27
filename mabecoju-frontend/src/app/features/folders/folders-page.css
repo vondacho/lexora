@@ -1,0 +1,22 @@
+.head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.sub { margin: 4px 0 0; }
+.small { font-size: 12px; }
+.create { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; border-color: #b9cdea; box-shadow: 0 2px 12px rgba(29, 95, 180, 0.08); }
+.create-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+h3 { font-size: 14px; margin: 4px 0 0; }
+.actions { display: flex; gap: 8px; }
+.problem { margin: 0; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end; margin-bottom: 8px; }
+.filters .field { flex: 0 1 160px; min-width: 0; }
+.filters .grow { flex: 1 1 200px; }
+.filters .input { width: 100%; }
+.by-customer { margin: 4px 0; }
+.link { padding: 0; border: 0; background: none; color: var(--accent); text-decoration: underline; cursor: pointer; font-size: 12px; }
+.count { margin: 4px 0 8px; }
+.list { list-style: none; margin: 0; padding: 0; }
+.folder { display: flex; align-items: center; gap: 12px; padding: 10px 8px; border-top: 1px solid var(--row-line); color: var(--ink); text-decoration: none; }
+.folder:hover { background: var(--ground); }
+.number { width: 56px; flex: none; font-size: 13px; color: var(--muted); }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.name { font-weight: 500; }
+.pager { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 12px; }

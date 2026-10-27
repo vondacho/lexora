@@ -1,0 +1,23 @@
+<main class="page">
+  <form class="card login" (ngSubmit)="submit()" aria-labelledby="login-title">
+    <div class="brand">
+      <span class="brand-name">mabecoju</span>
+      <span class="muted">juriste &amp; médiatrice</span>
+    </div>
+    <h1 id="login-title">Connexion</h1>
+    <div class="field">
+      <label for="username">Nom d’utilisateur</label>
+      <input id="username" name="username" class="input" autocomplete="username" required [(ngModel)]="username" autofocus />
+    </div>
+    <div class="field">
+      <label for="password">Mot de passe</label>
+      <input id="password" name="password" type="password" class="input" autocomplete="current-password" required [(ngModel)]="password" />
+    </div>
+    @if (error(); as message) {
+      <p class="problem" role="alert">{{ message }}</p>
+    }
+    <button type="submit" class="btn btn-primary" [disabled]="busy()">
+      {{ busy() ? 'Connexion…' : 'Se connecter' }}
+    </button>
+  </form>
+</main>

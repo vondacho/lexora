@@ -1,0 +1,190 @@
+<div class="head">
+  <div>
+    <h1>Modèles de lettres</h1>
+    <p class="muted sub">Textes des factures, demandes de provision et rappels ; les champs <code>$…</code> sont remplis à l’impression.</p>
+  </div>
+  @if (canEdit) {
+    <button type="button" class="btn btn-primary" (click)="newTemplate()">+ Nouveau modèle</button>
+  }
+</div>
+
+@if (flash(); as message) {
+  <p class="flash" role="status">{{ message }}</p>
+}
+@if (pending() !== null) {
+  <div class="pending" role="alert">
+    <span>Les modifications de « {{ draft()?.name || 'nouveau modèle' }} » ne sont pas enregistrées.</span>
+    <button type="button" class="btn btn-small" (click)="pending.set(null)">Continuer l’édition</button>
+    <button type="button" class="btn btn-small btn-warn" (click)="discardAndOpen()">Abandonner les modifications</button>
+  </div>
+}
+
+@switch (state()) {
+  @case ('loading') {
+    <p class="muted">Chargement des modèles…</p>
+  }
+  @case ('error') {
+    <p class="problem">Les modèles n’ont pas pu être chargés.</p>
+  }
+  @case ('ready') {
+    <div class="layout">
+      <nav class="card list" aria-label="Modèles">
+        @for (g of groups(); track g.type) {
+          <div class="group">
+            <div class="group-label">{{ g.label }}</div>
+            @for (m of g.items; track m.id) {
+              <button type="button" class="item" [class.current]="selected() === m.id" [attr.aria-current]="selected() === m.id ? 'true' : null" (click)="select(m.id)">
+                <span class="item-name">{{ m.name }}</span>
+                <span class="muted small">{{ (m.addressCount ?? 1) > 1 ? m.addressCount + ' clients' : '1 client' }}</span>
+              </button>
+            }
+          </div>
+        } @empty {
+          <p class="muted">Aucun modèle.</p>
+        }
+        @if (selected() === 'new') {
+          <div class="group"><div class="item current"><span class="item-name">Nouveau modèle</span></div></div>
+        }
+      </nav>
+
+      @if (draft(); as d) {
+        <section #editorSection class="card editor" aria-labelledby="ed-title">
+          <h2 id="ed-title">
+            {{ selected() === 'new' ? 'Nouveau modèle' : 'Modifier « ' + (original()?.name ?? '') + ' »' }}
+            @if (dirty()) {
+              <span class="unsaved">non enregistré</span>
+            }
+          </h2>
+          <fieldset class="form" [disabled]="!canEdit">
+            <div class="row2">
+              <div class="field"><label for="m-name">Nom du modèle</label><input id="m-name" class="input" maxlength="80" [ngModel]="d.name" (ngModelChange)="update('name', $event)" /></div>
+              <div class="field"><label for="m-title">Titre imprimé</label><input id="m-title" class="input" maxlength="80" [ngModel]="d.title" (ngModelChange)="update('title', $event)" /></div>
+              <div class="field">
+                <label for="m-type">Utilisé pour</label>
+                <select id="m-type" class="input" [ngModel]="d.type" (ngModelChange)="changeType($event)">
+                  @for (t of types; track t) {
+                    <option [value]="t">{{ typeLabels[t] }}</option>
+                  }
+                </select>
+              </div>
+              <div class="field">
+                <label for="m-adr">Destinataires prévus</label>
+                <select id="m-adr" class="input" [ngModel]="d.addressCount" (ngModelChange)="update('addressCount', +$event)">
+                  <option [ngValue]="1">1 client</option>
+                  <option [ngValue]="2">2 clients</option>
+                  <option [ngValue]="3">3 clients</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="pages">
+              <span class="label">Pages de chaque exemplaire</span>
+              @for (p of d.pages; track $index; let i = $index) {
+                <div class="page-row">
+                  <span class="muted small">Page {{ i + 1 }}</span>
+                  <select class="input" [attr.aria-label]="'Page ' + (i + 1)" [ngModel]="p" (ngModelChange)="setPage(i, $event)">
+                    <option value="letter">Lettre</option>
+                    <option value="detail" [disabled]="d.type !== 'INVOICE'">Décompte détaillé{{ d.type !== 'INVOICE' ? ' (factures)' : '' }}</option>
+                    @if (d.pages.length > 1) {
+                      <option value="none">— retirer —</option>
+                    }
+                  </select>
+                </div>
+              }
+              @if (d.pages.length < 4) {
+                <button type="button" class="link small" (click)="addPage()">+ Ajouter une page</button>
+              }
+              <span class="muted small">Le bulletin QR s’ajoute à la fin de chaque exemplaire qui a quelque chose à payer.</span>
+            </div>
+
+            <div class="text-head">
+              <span class="label" id="m-content-label">Texte de la lettre</span>
+              <span class="muted small">Cliquer un champ l’insère au curseur</span>
+            </div>
+            <div class="chips" role="group" aria-label="Champs disponibles">
+              @for (f of fields; track f.token) {
+                <button type="button" class="chip" [title]="f.token + ' — ' + f.help" (mousedown)="$event.preventDefault()" (click)="insert(f.token)">{{ f.label }}</button>
+              }
+            </div>
+            @if (d.format === 'html') {
+              <mbj-rich-editor [content]="d.content" labelledBy="m-content-label" (contentChange)="update('content', $event)" />
+            } @else {
+              <textarea #plainText id="m-content" class="input plain" rows="14" aria-labelledby="m-content-label" [ngModel]="d.content" (ngModelChange)="update('content', $event)"></textarea>
+              <div class="convert">
+                <span class="muted small">Texte simple, lisible aussi par l’ancienne application.</span>
+                <button type="button" class="btn btn-small" (click)="convert()">{{ confirmConvert() ? 'Confirmer : l’ancienne application afficherait les balises' : 'Passer en mise en forme' }}</button>
+              </div>
+            }
+          </fieldset>
+          @if (unknown().length) {
+            <p class="problem" role="alert">Champ inconnu : {{ unknown().join(', ') }} — il ne serait rien imprimé à sa place.</p>
+          }
+          @if (noAmount()) {
+            <p class="warning">Le texte ne mentionne aucun montant ($amount ou $amount_1).</p>
+          }
+          @if (error(); as message) {
+            <p class="problem" role="alert">{{ message }}</p>
+          }
+          @if (canEdit) {
+            <div class="actions">
+              <button type="button" class="btn btn-primary" [disabled]="busy() || !d.name.trim() || (!dirty() && selected() !== 'new')" (click)="save()">
+                {{ busy() ? 'Enregistrement…' : selected() === 'new' ? 'Créer le modèle' : 'Enregistrer' }}
+              </button>
+              @if (original()) {
+                <button type="button" class="btn" [disabled]="busy()" (click)="duplicate()">Dupliquer</button>
+                <button type="button" class="btn btn-warn" [disabled]="busy()" (click)="remove()">{{ confirmDelete() ? 'Confirmer la suppression' : 'Supprimer' }}</button>
+              }
+            </div>
+          } @else {
+            <p class="muted small">Vos droits permettent de consulter les modèles, pas de les modifier.</p>
+          }
+        </section>
+
+        <section class="card preview" aria-labelledby="pv-title">
+          <div class="preview-head">
+            <h2 id="pv-title">Aperçu</h2>
+            <div class="copies" role="group" aria-label="Exemplaire">
+              <button type="button" class="chip" [class.on]="copy() === 0" [attr.aria-pressed]="copy() === 0" (click)="copy.set(0)">Anne</button>
+              <button type="button" class="chip" [class.on]="copy() === 1" [attr.aria-pressed]="copy() === 1" (click)="copy.set(1)">Paul</button>
+            </div>
+          </div>
+          <p class="muted small">Exemple : dossier Dupont c. Dupont, deux clients ; champs remplis en bleu.</p>
+          @if (preview(); as p) {
+            @for (page of d.pages; track $index) {
+              @if (page === 'letter') {
+                <article class="sheet" aria-label="Page lettre">
+                  <div class="sheet-top">
+                    <div class="brand">mabecoju <span class="muted">juriste &amp; médiatrice</span></div>
+                    <div class="address">
+                      <div>{{ p.values['title_1'] }}</div>
+                      <div>{{ p.values['firstName_1'] }} {{ p.values['lastName_1'] }}</div>
+                      <div>{{ p.values['streetNo_1'] }}</div>
+                      <div>{{ p.values['zip_1'] }} {{ p.values['city_1'] }}</div>
+                    </div>
+                  </div>
+                  <div class="date-line">Neuchâtel, le {{ p.values['date'] }} · réf. {{ p.values['refNo'] }}</div>
+                  @if (d.title) {
+                    <div class="title">{{ d.title }}</div>
+                  }
+                  <div class="body" [class.plain-body]="!p.html" [innerHTML]="p.body"></div>
+                  <div class="signature">{{ p.values['issuerName'] }}</div>
+                </article>
+              } @else {
+                <article class="sheet detail" aria-label="Page décompte">
+                  <div class="title">Décompte détaillé · F-{{ p.values['refNo'] }}</div>
+                  <div class="line"><span>3 séances · 4 h 30</span><span class="mono">912.50</span></div>
+                  <div class="line"><span>TVA 8.1 %</span><span class="mono">73.90</span></div>
+                  <div class="line"><span>Provisions déduites</span><span class="mono">− 600.00</span></div>
+                  <div class="line total"><span>Solde</span><span class="mono">386.40</span></div>
+                </article>
+              }
+            }
+            <p class="muted small">Puis le bulletin QR de CHF {{ p.values['amount_1'] }} pour {{ p.values['firstName_1'] }} {{ p.values['lastName_1'] }}.</p>
+          }
+        </section>
+      } @else {
+        <p class="muted">Choisissez un modèle.</p>
+      }
+    </div>
+  }
+}

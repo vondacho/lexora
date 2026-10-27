@@ -1,0 +1,6 @@
+/node_modules
+/dist
+/.angular
+/coverage
+# generated from the OpenAPI contract by `npm run generate:api`
+/src/app/api/generated

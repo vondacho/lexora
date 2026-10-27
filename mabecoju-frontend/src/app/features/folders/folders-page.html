@@ -1,0 +1,123 @@
+<div class="head">
+  <div>
+    <h1>Dossiers</h1>
+    <p class="muted sub">{{ all().length }} dossiers · ouvrez-en un pour son fil, ses clients et sa facturation.</p>
+  </div>
+  @if (canCreate) {
+    <button type="button" class="btn btn-primary" (click)="startCreate()">+ Nouveau dossier</button>
+  }
+</div>
+
+@if (creating()) {
+  <form class="card create" (ngSubmit)="create()" aria-labelledby="new-title">
+    <div class="create-head">
+      <h2 id="new-title">Nouveau dossier</h2>
+      <button type="button" class="btn btn-small" (click)="creating.set(false)">Annuler</button>
+    </div>
+    <mbj-folder-fields [value]="folder" [statuses]="statusChoices()" prefix="new-folder" />
+    <h3>Premier client <span class="muted small">(facultatif, d’autres s’ajoutent ensuite)</span></h3>
+    <mbj-customer-fields [value]="customer" prefix="new-customer" />
+    @if (error(); as message) {
+      <p class="problem" role="alert">{{ message }}</p>
+    }
+    <div class="actions">
+      <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ busy() ? 'Ouverture…' : 'Ouvrir le dossier' }}</button>
+    </div>
+  </form>
+}
+
+@switch (state()) {
+  @case ('loading') {
+    <p class="muted">Chargement des dossiers…</p>
+  }
+  @case ('error') {
+    <p class="problem">Les dossiers n’ont pas pu être chargés.</p>
+  }
+  @case ('ready') {
+    <section class="card" aria-label="Liste des dossiers">
+      <div class="filters">
+        <div class="field grow">
+          <label for="f-text">Nom ou numéro</label>
+          <input id="f-text" class="input" type="search" autocomplete="off" placeholder="ex. Dupont, 1651" [ngModel]="filter().text" (ngModelChange)="setFilter({ text: $event })" />
+        </div>
+        <form class="field grow" (ngSubmit)="searchCustomer(customerQuery.value)">
+          <label for="f-customer">Client</label>
+          <input #customerQuery id="f-customer" class="input" type="search" autocomplete="off" placeholder="prénom ou nom, puis Entrée" (search)="searchCustomer(customerQuery.value)" />
+        </form>
+        <div class="field">
+          <label for="f-type">Type</label>
+          <select id="f-type" class="input" [ngModel]="filter().type" (ngModelChange)="setFilter({ type: $event })">
+            <option value="">Tous</option>
+            <option value="INVOICING">Facturation</option>
+            <option value="TUTELAGE">Tutelle</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-status">Statut</label>
+          <select id="f-status" class="input" [ngModel]="filter().status" (ngModelChange)="setFilter({ status: $event })">
+            <option value="">Tous</option>
+            @for (s of statusChoices(); track s) {
+              <option [value]="s">{{ s }}</option>
+            }
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-handled">Géré par</label>
+          <select id="f-handled" class="input" [ngModel]="filter().handledBy" (ngModelChange)="setFilter({ handledBy: $event })">
+            <option value="">Tous</option>
+            @for (h of handlers(); track h) {
+              <option [value]="h">{{ h }}</option>
+            }
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-sort">Tri</label>
+          <select id="f-sort" class="input" [ngModel]="sort()" (ngModelChange)="sort.set($event)">
+            <option value="name">Nom</option>
+            <option value="number">Numéro, récents d’abord</option>
+            <option value="recent">Ouverture, récents d’abord</option>
+          </select>
+        </div>
+      </div>
+      @if (byCustomer(); as c) {
+        <p class="by-customer small">Dossiers dont un client s’appelle « {{ c.query }} » <button type="button" class="link" (click)="byCustomer.set(null); customerQuery.value = ''">tous les dossiers</button></p>
+      }
+      <p class="muted small count">{{ found().length }} dossier{{ found().length > 1 ? 's' : '' }}</p>
+      @if (found().length === 0) {
+        <p class="muted">Aucun dossier ne correspond.</p>
+      } @else {
+        <ul class="list">
+          @for (f of current().items; track f.id) {
+            <li>
+              <a class="folder" [routerLink]="['/dossiers', f.id]">
+                <span class="number mono">#{{ f.number ?? f.id }}</span>
+                <span class="main">
+                  <span class="name">{{ f.name }}</span>
+                  <span class="muted small">
+                    {{ f.type === 'TUTELAGE' ? 'Tutelle' : 'Facturation' }}
+                    @if (f.handledBy) {
+                      · géré par {{ f.handledBy }}
+                    }
+                    @if (f.openingDate) {
+                      · ouvert le {{ f.openingDate | swissDate }}
+                    }
+                  </span>
+                </span>
+                @if (f.status) {
+                  <span class="pill">{{ f.status }}</span>
+                }
+              </a>
+            </li>
+          }
+        </ul>
+        @if (current().pages > 1) {
+          <nav class="pager" aria-label="Pages">
+            <button type="button" class="btn btn-small" [disabled]="current().index === 0" (click)="pageIndex.set(current().index - 1)">Précédents</button>
+            <span class="muted small">page {{ current().index + 1 }} / {{ current().pages }}</span>
+            <button type="button" class="btn btn-small" [disabled]="current().index + 1 >= current().pages" (click)="pageIndex.set(current().index + 1)">Suivants</button>
+          </nav>
+        }
+      }
+    </section>
+  }
+}

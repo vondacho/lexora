@@ -1,0 +1,156 @@
+<h1>Encaissements bancaires</h1>
+<p class="muted sub">Les paiements du relevé sont rapprochés de leur débiteur grâce aux références des bulletins QR.</p>
+
+@if (!canImport) {
+  <p class="card muted">Vos droits ne permettent pas d’enregistrer des encaissements.</p>
+} @else {
+  @if (outcome(); as o) {
+    <div class="done" role="status">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>
+      <span class="done-text">
+        <strong>{{ o.recorded }} paiement{{ o.recorded > 1 ? 's' : '' }} enregistré{{ o.recorded > 1 ? 's' : '' }}.</strong>
+        {{ o.settled }} document{{ o.settled > 1 ? 's' : '' }} soldé{{ o.settled > 1 ? 's' : '' }}
+        @if (o.advances > 0) {
+          · {{ o.advances | chf }} en avances
+        }
+        @if (o.skipped > 0) {
+          · {{ o.skipped }} déjà enregistré{{ o.skipped > 1 ? 's' : '' }}, ignoré{{ o.skipped > 1 ? 's' : '' }}
+        }
+      </span>
+      <a routerLink="/a-traiter">Retour à « À traiter »</a>
+    </div>
+  }
+  @if (error(); as message) {
+    <p class="problem" role="alert">{{ message }}</p>
+  }
+
+  @if (!analysis()) {
+    <section class="drop" [class.dragging]="dragging()" aria-labelledby="drop-title"
+             (dragover)="$event.preventDefault(); dragging.set(true)" (dragleave)="dragging.set(false)" (drop)="onDrop($event)">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"></path><path d="m7 9 5-5 5 5"></path><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"></path></svg>
+      <h2 id="drop-title">Déposez le relevé camt.054 de la banque</h2>
+      <p class="muted">Fichier ISO 20022 téléchargé depuis l’e-banking. Rien n’est enregistré avant votre validation.</p>
+      <label class="btn btn-primary pick">
+        {{ reading() ? 'Lecture…' : 'Choisir le fichier' }}
+        <input type="file" accept=".xml,application/xml,text/xml" class="visually-hidden" (change)="onPick($event)" [disabled]="reading()" />
+      </label>
+    </section>
+  } @else {
+    @if (analysis(); as a) {
+      <div class="file">
+        <span class="mono chip-file">{{ fileName() }}</span>
+        <span class="muted small">
+          {{ a.accountIban || 'compte inconnu' }}
+          @if (a.from) {
+            · du {{ a.from | swissDate }} au {{ a.to | swissDate }}
+          }
+          @if ((a.skippedDebits ?? 0) > 0) {
+            · {{ a.skippedDebits }} débit{{ (a.skippedDebits ?? 0) > 1 ? 's' : '' }} ignoré{{ (a.skippedDebits ?? 0) > 1 ? 's' : '' }}
+          }
+        </span>
+        <button type="button" class="btn btn-small" (click)="reset()">Autre fichier</button>
+      </div>
+
+      <div class="tiles">
+        <div class="tile"><span class="label">Paiements</span><span class="value">{{ summary().count }}</span><span class="note mono">{{ summary().total | chf }}</span></div>
+        <div class="tile ok"><span class="label">Rapprochés</span><span class="value">{{ summary().ready }}</span><span class="note mono">{{ summary().readyTotal | chf }}</span></div>
+        <div class="tile warn"><span class="label">À vérifier</span><span class="value">{{ summary().toCheck }}</span><span class="note">suggestions et sans document</span></div>
+        @if (summary().duplicates > 0) {
+          <div class="tile"><span class="label">Déjà importés</span><span class="value">{{ summary().duplicates }}</span><span class="note">ne seront pas repris</span></div>
+        }
+      </div>
+
+      <section class="card lines-card" aria-labelledby="lines-title">
+        <h2 id="lines-title">Paiements du relevé</h2>
+        @if (rows().length === 0) {
+          <p class="muted">Aucun crédit dans ce relevé.</p>
+        } @else {
+          <div class="table-box">
+            <table class="lines">
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Payeur selon la banque</th>
+                  <th scope="col">Référence</th>
+                  <th scope="col" class="num">Montant</th>
+                  <th scope="col">Rapprochement</th>
+                  <th scope="col">Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (r of rows(); track r.index) {
+                  <tr [attr.data-status]="r.entry.status" [class.included]="r.decision.include && r.bookable">
+                    <td class="mono" data-label="Date">{{ r.entry.date | swissDate: false }}</td>
+                    <td data-label="Payeur">
+                      {{ r.entry.debtorName || '—' }}
+                      @if (r.entry.remittance) {
+                        <span class="muted small block">« {{ r.entry.remittance }} »</span>
+                      }
+                    </td>
+                    <td class="mono small ref" data-label="Référence">{{ r.entry.reference ? reference(r.entry.reference) : 'sans référence' }}</td>
+                    <td class="mono num" data-label="Montant">{{ r.entry.amount | chf }}{{ r.entry.currency !== 'CHF' ? ' ' + r.entry.currency : '' }}</td>
+                    <td data-label="Rapprochement">
+                      @if (r.decision.manual; as m) {
+                        <a [routerLink]="['/dossiers', m.folderId]">{{ m.folderName }}</a> · {{ ref(m.kind, m.documentId) }}
+                      } @else if (r.entry.target; as t) {
+                        <a [routerLink]="['/dossiers', t.folderId]">{{ t.folderName }}</a> · {{ ref(t.kind, t.documentId) }} · {{ t.customerName }}
+                      }
+                      @if (r.effect) {
+                        <span class="muted small block">{{ r.effect }}</span>
+                      }
+                      @if (r.entry.status === 'UNMATCHED' && r.entry.problem !== 'CURRENCY') {
+                        <select class="input choose" [attr.aria-label]="'Document payé par ' + (r.entry.debtorName || 'ce paiement')" [ngModel]="choiceKey(r)" (ngModelChange)="choose(r, $event)">
+                          <option value="">Choisir le document payé…</option>
+                          @for (d of openDocuments(); track d.kind + d.documentId) {
+                            <option [value]="d.kind + ':' + d.documentId">{{ d.folderName }} · {{ ref(d.kind, d.documentId) }} · reste {{ d.remaining | chf }}</option>
+                          }
+                        </select>
+                      }
+                    </td>
+                    <td data-label="Statut">
+                      @switch (r.entry.status) {
+                        @case ('DUPLICATE') {
+                          <span class="pill neutral">déjà importé</span>
+                        }
+                        @case ('READY') {
+                          <label class="check"><input type="checkbox" [checked]="r.decision.include" (change)="toggle(r)" /> {{ r.decision.include ? 'rapproché' : 'ignoré' }}</label>
+                        }
+                        @case ('CHECK') {
+                          <span class="problem-text small">{{ problems[r.entry.problem ?? ''] }}</span>
+                          @if (r.decision.include) {
+                            <label class="check"><input type="checkbox" checked (change)="toggle(r)" /> confirmé</label>
+                          } @else {
+                            <button type="button" class="btn btn-small btn-warn" (click)="toggle(r)">
+                              {{ r.entry.problem === 'OVERPAID' ? 'Accepter l’écart' : 'Associer à ' + r.documentRef }}
+                            </button>
+                          }
+                        }
+                        @default {
+                          <span class="problem-text small">{{ problems[r.entry.problem ?? ''] }}</span>
+                          @if (r.decision.manual) {
+                            <label class="check"><input type="checkbox" [checked]="r.decision.include" (change)="toggle(r)" /> {{ r.decision.include ? 'associé' : 'ignoré' }}</label>
+                          }
+                        }
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        <div class="footer">
+          <span class="muted">
+            {{ summary().included }} paiement{{ summary().included > 1 ? 's' : '' }} à enregistrer · {{ summary().includedTotal | chf }}
+            @if (summary().toCheck > 0) {
+              · les lignes non confirmées restent pour un prochain import
+            }
+          </span>
+          <button type="button" class="btn btn-primary" [disabled]="saving() || summary().included === 0" (click)="validate()">
+            {{ saving() ? 'Enregistrement…' : 'Valider ' + summary().included + ' paiement' + (summary().included > 1 ? 's' : '') }}
+          </button>
+        </div>
+      </section>
+    }
+  }
+}

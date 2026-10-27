@@ -1,0 +1,164 @@
+/* Shared by the side panels of the folder screen: composers and details. */
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-color: #b9cdea;
+  box-shadow: 0 2px 12px rgba(29, 95, 180, 0.08);
+}
+
+.composer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lines {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.lines td {
+  padding: 5px 0;
+  vertical-align: top;
+}
+
+.lines td.mono,
+.lines td:last-child {
+  text-align: right;
+  white-space: nowrap;
+  padding-left: 12px;
+}
+
+.lines .sum td {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.lines .total td {
+  border-top: 1px solid var(--ink);
+  padding-top: 8px;
+  font-weight: 600;
+}
+
+.terms {
+  display: grid;
+  /* wide enough for a date with its picker icon */
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.terms .input {
+  width: 100%;
+}
+
+.split {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.split label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.split input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.presets,
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chip.on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.shares {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.share {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  border-radius: var(--radius);
+  background: var(--ground);
+  font-size: 12px;
+}
+
+.share .mono {
+  font-size: 15px;
+}
+
+.note {
+  margin: 0;
+  font-size: 12px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.problem {
+  margin: 0;
+}
+
+.wide {
+  width: 100%;
+  min-height: 44px;
+}
+
+dl.facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+
+dl.facts dt {
+  color: var(--muted);
+}
+
+dl.facts dd {
+  margin: 0;
+  text-align: right;
+  font-family: var(--mono);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.done {
+  margin: 0;
+  color: var(--ok);
+}
