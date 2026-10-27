@@ -95,6 +95,8 @@ export const expensesFr = {
   },
 };
 
+const sEn = (n: number) => (n !== 1 ? 's' : '');
+
 export const expensesEn: typeof expensesFr = {
   title: 'Office expenses',
   sub: 'One-off payments and standing orders, VAT included.',
@@ -104,7 +106,7 @@ export const expensesEn: typeof expensesFr = {
   failed: 'The expenses could not be loaded.',
   reloadFailed: 'The expenses could not be reloaded.',
   monthTile: (ofMonth: string) => 'Expenses ' + ofMonth,
-  payments: (n: number) => `${n} payment${s(n)}`,
+  payments: (n: number) => `${n} payment${sEn(n)}`,
   vatIncluded: 'VAT included',
   vatNote: 'not deductible (flat rate)',
   toPay: 'To pay',
@@ -143,7 +145,7 @@ export const expensesEn: typeof expensesFr = {
   booking: 'Booking…',
   confirmBook: (n: number, month: string) => `Confirm: ${n} payments for ${month}`,
   book: (month: string) => 'Book ' + month,
-  booked: (n: number, month: string) => `${n} payment${s(n)} booked for ${month}.`,
+  booked: (n: number, month: string) => `${n} payment${sEn(n)} booked for ${month}.`,
   bookFailed: 'The orders could not be booked.',
   orderGone: 'The order of this payment no longer exists.',
   orderCreated: 'Order created.',

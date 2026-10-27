@@ -56,8 +56,10 @@ export const homeFr = {
   },
 };
 
+const pluralEn = (n: number, one: string, many: string) => (n !== 1 ? many : one);
+
 export const homeEn: typeof homeFr = {
-  pending: (n: number) => `${n} action${n > 1 ? 's' : ''} pending`,
+  pending: (n: number) => `${n} action${n !== 1 ? 's' : ''} pending`,
   nothingPending: 'nothing pending',
   noWidget: 'Your rights do not give access to anything on this page.',
   recall: {
@@ -67,9 +69,9 @@ export const homeEn: typeof homeFr = {
     failed: 'The unpaid documents could not be loaded.',
     none: 'Nothing to recall: no overdue invoice nor request.',
     overdue: 'overdue for',
-    days: (n: number) => `${n} day${n > 1 ? 's' : ''}`,
+    days: (n: number) => `${n} day${n !== 1 ? 's' : ''}`,
     noRecall: 'no reminder',
-    recalls: (n: number, date: string | null) => `${n} ${plural(n, 'reminder', 'reminders')}${date ? ', on ' + date : ''}`,
+    recalls: (n: number, date: string | null) => `${n} ${pluralEn(n, 'reminder', 'reminders')}${date ? ', on ' + date : ''}`,
     action: (n: number) => `Reminder no. ${n}`,
     seeAll: (n: number) => `See the ${n} overdue documents`,
   },
@@ -107,7 +109,7 @@ export const homeEn: typeof homeFr = {
     searching: 'Searching…',
     failed: 'The search did not succeed.',
     none: 'No folder matches.',
-    count: (n: number, shown: number) => `${n} folder${n > 1 ? 's' : ''}${n > shown ? ` · ${shown} shown` : ''}`,
+    count: (n: number, shown: number) => `${n} folder${n !== 1 ? 's' : ''}${n > shown ? ` · ${shown} shown` : ''}`,
     hint: 'Type the beginning of a name or a number.',
   },
 };

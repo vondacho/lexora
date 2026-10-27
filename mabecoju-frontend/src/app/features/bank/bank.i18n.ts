@@ -67,12 +67,14 @@ export const bankFr = {
   } as Record<string, string>,
 };
 
+const sEn = (n: number) => (n !== 1 ? 's' : '');
+
 export const bankEn: typeof bankFr = {
   title: 'Bank receipts',
   sub: 'The payments of the statement are matched to their debtor through the QR-bill references.',
   noRight: 'Your rights do not allow recording receipts.',
-  recorded: (n: number) => `${n} payment${s(n)} recorded.`,
-  settled: (n: number) => `${n} document${s(n)} settled`,
+  recorded: (n: number) => `${n} payment${sEn(n)} recorded.`,
+  settled: (n: number) => `${n} document${sEn(n)} settled`,
   advances: (amount: string) => amount + ' as advances',
   skipped: (n: number) => `${n} already recorded, skipped`,
   backToTodo: 'Back to “To do”',
@@ -82,7 +84,7 @@ export const bankEn: typeof bankFr = {
   pick: 'Choose the file',
   unknownAccount: 'unknown account',
   period: (from: string, to: string) => `from ${from} to ${to}`,
-  debits: (n: number) => `${n} debit${s(n)} ignored`,
+  debits: (n: number) => `${n} debit${sEn(n)} ignored`,
   otherFile: 'Another file',
   payments: 'Payments',
   matched: 'Matched',
@@ -110,9 +112,9 @@ export const bankEn: typeof bankFr = {
   linked: 'linked',
   acceptGap: 'Accept the difference',
   linkTo: (ref: string) => 'Link to ' + ref,
-  toRecord: (n: number, amount: string) => `${n} payment${s(n)} to record · ${amount}`,
+  toRecord: (n: number, amount: string) => `${n} payment${sEn(n)} to record · ${amount}`,
   laterNote: 'unconfirmed lines stay for a later import',
-  validate: (n: number) => `Record ${n} payment${s(n)}`,
+  validate: (n: number) => `Record ${n} payment${sEn(n)}`,
   saveFailed: 'The payments could not be recorded.',
   tooBig: 'File too large for a statement (over 10 MB).',
   readFailed: 'The file could not be read.',

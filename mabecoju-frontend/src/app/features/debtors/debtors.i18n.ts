@@ -95,7 +95,7 @@ export const debtorsEn: typeof debtorsFr = {
   attachments: 'Attachments',
   counts: ['none', 'one', 'two', 'three'],
   step3: '3 · Preview',
-  copies: (n: number) => `${n} cop${n > 1 ? 'ies' : 'y'}`,
+  copies: (n: number) => `${n} cop${n !== 1 ? 'ies' : 'y'}`,
   letterPreview: 'Letter preview',
   copyOf: (who: string) => 'Copy for ' + who,
   common: 'Joint letter',

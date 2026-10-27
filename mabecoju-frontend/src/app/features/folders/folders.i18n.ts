@@ -78,7 +78,7 @@ export const foldersEn: typeof foldersFr = {
   byOpening: 'Opening, newest first',
   byCustomer: (q: string) => `Folders with a client named “${q}”`,
   allFolders: 'all folders',
-  count: (n: number) => `${n} folder${n > 1 ? 's' : ''}`,
+  count: (n: number) => `${n} folder${n !== 1 ? 's' : ''}`,
   none: 'No folder matches.',
   pages: 'Pages',
   previous: 'Previous',

@@ -58,9 +58,25 @@ generator.
 
 ## Error messages
 
-The API returns a `code` and `params` with each error; `shared/errors.ts` holds the French text of every code
-(`Record<Problem.CodeEnum, …>`: a code added to the contract does not compile until translated), and
+The API returns a `code` and `params` with each error; `shared/errors.ts` holds the French and English text of every
+code (`Record<Problem.CodeEnum, …>`: a code added to the contract does not compile until translated), and
 `problemMessage(error, fallback)` gives the text to show. The English `detail` of the API is never shown.
+
+## Languages
+
+The interface is in French or English, switched by the FR | EN button (header, menu drawer and login page); the choice
+is kept in the browser (`localStorage`, key `mabecoju.lang`). French is the default.
+
+- `i18n/i18n.ts`: the `lang` signal and `texts`, the texts of the current language. Components expose
+  `protected readonly tx = texts` and templates read `tx().section.key`; texts with values are functions
+  (`tx().folder.page.openSessions(n)`). Rules that build texts (timeline, bank matching…) read `texts()` inside
+  `computed`, so everything follows a switch without reload.
+- Each feature has its `*.i18n.ts` with `xxxFr` and `xxxEn: typeof xxxFr`: a text missing in English does not compile.
+  `messages.fr.ts` / `messages.en.ts` gather them; `common.i18n.ts` holds the shared words and the month names.
+- Page titles come from the route's `data.titleKey` (`TranslatedTitleStrategy`); error codes have a French and an
+  English table in `shared/errors.ts`.
+- What is printed stays French: letters, the letter preview and the placeholders' sample values, like the PDFs the
+  API produces. Data (folder names, wordings, statuses) is shown as entered.
 
 ## Layout
 
@@ -69,6 +85,7 @@ src/app/
   api/generated/   client generated from the contract (not versioned)
   core/            AuthService, authInterceptor, authGuard
   shell/           header, sidebar / drawer, navigation entries
+  i18n/            language switch, texts of both languages, page titles
   shared/          formatting of amounts (1'230.40) and dates (24.10.2026)
   features/        one folder per screen: login, home (widgets and their rules in home.model.ts), folders, folder, …
                    folder/: FolderStore (data, reloaded after each change), timeline.model.ts, shares.ts and

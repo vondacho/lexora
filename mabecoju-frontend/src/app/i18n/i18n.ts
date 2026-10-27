@@ -23,6 +23,11 @@ function initialLang(): Lang {
 /** The language of the interface; French by default (the office's language), English on demand. */
 export const lang = signal<Lang>(initialLang());
 
+// the page language follows a choice remembered from an earlier visit (screen readers, hyphenation)
+if (typeof document !== 'undefined') {
+  document.documentElement.lang = lang();
+}
+
 /**
  * Texts of the current language. Read it in templates, computed values and the rules that build texts: they follow
  * the language as soon as it changes.

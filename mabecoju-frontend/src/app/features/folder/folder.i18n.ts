@@ -243,6 +243,8 @@ export const folderFr = {
   },
 };
 
+const sEn = (n: number, word: string) => `${n} ${word}${n !== 1 ? 's' : ''}`;
+
 export const folderEn: typeof folderFr = {
   detail: {
     closeDetail: 'Close the detail',
@@ -409,7 +411,7 @@ export const folderEn: typeof folderFr = {
     addPayment: '+ Payment',
     invoice: 'Invoice',
     toInvoice: 'To invoice',
-    openSessions: (n: number) => (n > 1 ? `${n} open sessions` : `${n} open session`),
+    openSessions: (n: number) => (n !== 1 ? `${n} open sessions` : `${n} open session`),
     available: 'Available advances',
     availableNote: 'deducted on the next invoice',
     uncovered: 'Not covered',
@@ -447,7 +449,7 @@ export const folderEn: typeof folderFr = {
     client: (id: number) => 'client ' + id,
     means: { cash: 'Cash', slip: 'QR-bill', transfer: 'Transfer' },
     opening: 'Folder opened',
-    clients: (n: number) => s(n, 'client'),
+    clients: (n: number) => sEn(n, 'client'),
     opened: 'opened',
     session: 'Session',
     expenses: (amount: string) => 'expenses ' + amount,
@@ -481,7 +483,7 @@ export const folderEn: typeof folderFr = {
     partly: 'partly paid',
     overdue: 'overdue',
     open: 'open',
-    monthSessions: (n: number, duration: string, amount: string) => `${s(n, 'session')} · ${duration} · ${amount} of fees`,
+    monthSessions: (n: number, duration: string, amount: string) => `${sEn(n, 'session')} · ${duration} · ${amount} of fees`,
     monthCashed: (amount: string) => 'received ' + amount,
   },
 };

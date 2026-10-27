@@ -91,7 +91,7 @@ export const templatesEn: typeof templatesFr = {
   loading: 'Loading the templates…',
   failed: 'The templates could not be loaded.',
   list: 'Templates',
-  clients: (n: number) => (n > 1 ? `${n} clients` : '1 client'),
+  clients: (n: number) => (n !== 1 ? `${n} clients` : '1 client'),
   none: 'No template.',
   new: 'New template',
   editName: (name: string) => `Edit “${name}”`,
