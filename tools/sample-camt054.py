@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes a sample camt.054 bank notification paying the open invoices and advance requests of a mabecoju API,
+"""Writes a sample camt.054 bank notification paying the open invoices and advance requests of a lexora API,
 to try the import of "Encaissements" on demo data. Nothing is recorded: the file is only written.
 
     python3 tools/sample-camt054.py [--url http://localhost:8080] [--user demo] [--password demo] [--out camt054-demo.xml]

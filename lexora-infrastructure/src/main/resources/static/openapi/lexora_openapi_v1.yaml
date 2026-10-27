@@ -1,0 +1,2168 @@
+openapi: 3.0.3
+info:
+  title: Lexora API
+  version: 2.0.0
+  description: |
+    Back office of the office: client folders, fees (honoraries), provision requests, invoices, payment follow-up
+    and the office books.
+
+    - Every call needs HTTP Basic credentials of a user (`all_users`). Each operation requires the page grant of the
+      legacy application noted in its description (`module:page`); `GET /api/me` returns the grants of the caller.
+    - Amounts are in Swiss francs with two decimals. Rates are percentages (`7.7` for 7.7 %).
+    - Errors are RFC 9457 problem details: 400 invalid request, 401 not authenticated, 403 missing grant,
+      404 unknown resource, 422 business rule violated.
+servers:
+  - url: /
+security:
+  - basicAuth: []
+tags:
+  - name: Folders
+    description: Client folders and their statuses
+  - name: Customers
+    description: Parties of a folder
+  - name: Honoraries
+    description: Billable services
+  - name: Invoices
+    description: Fee notes, their payments and reminders
+  - name: AdvanceRequests
+    description: Provision requests and their reminders
+  - name: Advances
+    description: Provisions received
+  - name: Tickets
+    description: Payment slips (BVR / QR references)
+  - name: Debtors
+    description: What customers owe and what they pay
+  - name: BankStatements
+    description: Import of the bank notifications (camt.054), matched to the invoices and advance requests they pay
+  - name: Templates
+    description: Document models and honorary wordings
+  - name: Documents
+    description: PDF documents generated on demand from the letter templates, with Swiss QR-bills
+  - name: Settings
+    description: Module defaults
+  - name: Booking
+    description: Outgoing payments and standing orders of the office and of tutelage folders
+  - name: Vat
+    description: VAT paid per period (net tax rate method)
+  - name: Reports
+    description: Financial reports
+  - name: Users
+    description: Users and grants
+
+paths:
+  # ----- folders ---------------------------------------------------------------------------------------------------
+  /api/folders:
+    get:
+      tags: [Folders]
+      operationId: searchFolders
+      summary: Search folders
+      description: Text criteria match by prefix; only the first given among name, number and customer is used. Grant `invoicing:folder_search`.
+      parameters:
+        - { name: name, in: query, schema: { type: string } }
+        - { name: number, in: query, schema: { type: string } }
+        - { name: customer, in: query, description: First or last name of a customer, schema: { type: string } }
+        - { name: type, in: query, schema: { $ref: '#/components/schemas/FolderType' } }
+      responses:
+        '200':
+          description: Folders ordered by name
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Folder' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Folders]
+      operationId: openFolder
+      summary: Open a folder, optionally with its first customer
+      description: The folder number is its identifier. Grant `invoicing:folder_create`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/OpenFolderInput' } } }
+      responses:
+        '201':
+          description: Folder opened
+          content: { application/json: { schema: { $ref: '#/components/schemas/OpenedFolder' } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/folders/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [Folders]
+      operationId: getFolder
+      summary: Display a folder
+      description: Grant `invoicing:folder_display`.
+      responses:
+        '200': { description: The folder, content: { application/json: { schema: { $ref: '#/components/schemas/Folder' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [Folders]
+      operationId: updateFolder
+      summary: Modify a folder
+      description: Grant `invoicing:folder_modify`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/FolderInput' } } }
+      responses:
+        '200': { description: The modified folder, content: { application/json: { schema: { $ref: '#/components/schemas/Folder' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Folders]
+      operationId: deleteFolder
+      summary: Delete a folder and everything it holds
+      description: Deletes its invoices, advance requests, advances, honoraries, payment slips, booking entries, standing orders and customers. Grant `invoicing:folder_modify`.
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/folder-statuses:
+    get:
+      tags: [Folders]
+      operationId: listFolderStatuses
+      summary: Proposed folder statuses
+      responses:
+        '200':
+          description: Statuses ordered by name
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/FolderStatus' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Folders]
+      operationId: addFolderStatus
+      summary: Add a folder status
+      description: Grant `invoicing:folder_status_modify`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/FolderStatusInput' } } }
+      responses:
+        '201': { description: Added, content: { application/json: { schema: { $ref: '#/components/schemas/FolderStatus' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/folder-statuses/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    delete:
+      tags: [Folders]
+      operationId: deleteFolderStatus
+      summary: Remove a folder status
+      description: Grant `invoicing:folder_status_modify`.
+      responses:
+        '204': { description: Removed }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ----- customers -------------------------------------------------------------------------------------------------
+  /api/folders/{folderId}/customers:
+    parameters: [ { $ref: '#/components/parameters/FolderId' } ]
+    get:
+      tags: [Customers]
+      operationId: listCustomers
+      summary: Customers of a folder
+      description: Grant `invoicing:customer_display`.
+      parameters:
+        - { name: activeAt, in: query, description: Only the customers active on that day, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Customers ordered by start of activity
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Customer' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Customers]
+      operationId: addCustomer
+      summary: Add a customer to a folder
+      description: Grant `invoicing:customer_create`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CustomerInput' } } }
+      responses:
+        '201': { description: Added, content: { application/json: { schema: { $ref: '#/components/schemas/Customer' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/customers/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [Customers]
+      operationId: getCustomer
+      summary: Display a customer
+      description: Grant `invoicing:customer_display`.
+      responses:
+        '200': { description: The customer, content: { application/json: { schema: { $ref: '#/components/schemas/Customer' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [Customers]
+      operationId: updateCustomer
+      summary: Modify a customer
+      description: Grant `invoicing:customer_modify`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CustomerInput' } } }
+      responses:
+        '200': { description: The modified customer, content: { application/json: { schema: { $ref: '#/components/schemas/Customer' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Customers]
+      operationId: removeCustomer
+      summary: Remove a customer entered by mistake
+      description: |
+        Refused (422) when the customer has a share of an invoice or request, a payment, an advance or a payment slip
+        in the folder: set `activeUntil` instead. Grant `invoicing:customer_modify`.
+      responses:
+        '204': { description: Removed }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ----- honoraries ------------------------------------------------------------------------------------------------
+  /api/folders/{folderId}/honoraries:
+    parameters: [ { $ref: '#/components/parameters/FolderId' } ]
+    get:
+      tags: [Honoraries]
+      operationId: listHonoraries
+      summary: Honoraries of a folder
+      description: Grant `invoicing:folder_honoraries`.
+      parameters:
+        - { name: invoiced, in: query, description: 'true for the invoiced ones, false for the open ones, absent for all', schema: { type: boolean } }
+      responses:
+        '200':
+          description: Honoraries in chronological order
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Honorary' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Honoraries]
+      operationId: recordHonorary
+      summary: Record an honorary
+      description: Amount = minutes / 60 × hourly rate + expenses. Grant `invoicing:honorary_create`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/HonoraryInput' } } }
+      responses:
+        '201': { description: Recorded, content: { application/json: { schema: { $ref: '#/components/schemas/Honorary' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/honoraries/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [Honoraries]
+      operationId: getHonorary
+      summary: Display an honorary
+      description: Grant `invoicing:folder_honoraries`.
+      responses:
+        '200': { description: The honorary, content: { application/json: { schema: { $ref: '#/components/schemas/Honorary' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [Honoraries]
+      operationId: reviseHonorary
+      summary: Modify an open honorary
+      description: Refused (422) once the honorary is invoiced. Grant `invoicing:honorary_modify`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/HonoraryInput' } } }
+      responses:
+        '200': { description: The modified honorary, content: { application/json: { schema: { $ref: '#/components/schemas/Honorary' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Honoraries]
+      operationId: deleteHonorary
+      summary: Delete an open honorary
+      description: Refused (422) once the honorary is invoiced. Grant `invoicing:honorary_modify`.
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ----- invoices --------------------------------------------------------------------------------------------------
+  /api/folders/{folderId}/invoices:
+    parameters: [ { $ref: '#/components/parameters/FolderId' } ]
+    get:
+      tags: [Invoices]
+      operationId: listFolderInvoices
+      summary: Invoices of a folder
+      description: Grant `invoicing:folder_invoices`.
+      responses:
+        '200':
+          description: Invoices, most recent first
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Invoice' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Invoices]
+      operationId: issueInvoice
+      summary: Issue an invoice
+      description: |
+        Bills every open honorary of the folder and deducts every available advance.
+        Discount and shares are rounded to 5 centimes; VAT is truncated to 10 centimes;
+        amount = honoraries − discount + VAT − advances. Grant `invoicing:invoice_create`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/InvoiceTermsInput' } } }
+      responses:
+        '201': { description: Issued, content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/folders/{folderId}/invoice-draft:
+    parameters: [ { $ref: '#/components/parameters/FolderId' } ]
+    get:
+      tags: [Invoices]
+      operationId: prepareInvoice
+      summary: What the next invoice of the folder would contain
+      description: Grant `invoicing:invoice_create`.
+      responses:
+        '200': { description: The draft, content: { application/json: { schema: { $ref: '#/components/schemas/InvoiceDraft' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/invoices:
+    get:
+      tags: [Invoices]
+      operationId: listInvoicesByStatus
+      summary: Open or paid invoices
+      description: Grant `invoicing:debtors_open` or `invoicing:debtors_payed`.
+      parameters:
+        - name: status
+          in: query
+          required: true
+          schema: { type: string, enum: [open, paid] }
+      responses:
+        '200':
+          description: Open invoices oldest first, or paid invoices most recently paid first
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Invoice' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/invoices/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [Invoices]
+      operationId: getInvoice
+      summary: Display an invoice
+      description: Grant `invoicing:invoice_display`.
+      responses:
+        '200': { description: The invoice, content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [Invoices]
+      operationId: reviseInvoice
+      summary: Modify date, delay, discount, VAT or shares
+      description: Grant `invoicing:invoice_modify`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/InvoiceTermsInput' } } }
+      responses:
+        '200': { description: The modified invoice, content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Invoices]
+      operationId: deleteInvoice
+      summary: Delete an invoice
+      description: Its honoraries and advances become open again; its payments and reminders are deleted. Grant `invoicing:invoice_modify`.
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/invoices/{id}/honoraries:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [Invoices]
+      operationId: listInvoicedHonoraries
+      summary: Honoraries billed by the invoice
+      description: Grant `invoicing:invoice_display`.
+      responses:
+        '200':
+          description: Honoraries
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Honorary' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/invoices/{id}/advances:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [Invoices]
+      operationId: listDeductedAdvances
+      summary: Advances deducted on the invoice
+      description: Grant `invoicing:invoice_display`.
+      responses:
+        '200':
+          description: Advances
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Advance' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/invoices/{id}/settlement:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    post:
+      tags: [Invoices]
+      operationId: settleInvoice
+      summary: Mark the invoice as paid ("solder")
+      description: Today when no date is given. Grant `invoicing:invoice_modify`.
+      requestBody:
+        required: false
+        content: { application/json: { schema: { $ref: '#/components/schemas/DateInput' } } }
+      responses:
+        '200': { description: The settled invoice, content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Invoices]
+      operationId: reopenInvoice
+      summary: Reopen the invoice
+      description: Grant `invoicing:invoice_modify`.
+      responses:
+        '200': { description: The reopened invoice, content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/invoices/{id}/recalls:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    post:
+      tags: [Invoices]
+      operationId: recallInvoice
+      summary: Send the next reminder
+      description: Claims what is still due; today when no date is given. Grant `invoicing:invoice_modify`.
+      requestBody:
+        required: false
+        content: { application/json: { schema: { $ref: '#/components/schemas/DateInput' } } }
+      responses:
+        '201': { description: The invoice with its new reminder, content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/invoices/{id}/recalls/{recallId}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+      - { name: recallId, in: path, required: true, schema: { type: integer, format: int64 } }
+    delete:
+      tags: [Invoices]
+      operationId: cancelInvoiceRecall
+      summary: Cancel a reminder
+      description: Grant `invoicing:invoice_modify`.
+      responses:
+        '200': { description: The invoice, content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/invoices/{id}/payments:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    post:
+      tags: [Invoices]
+      operationId: recordInvoicePayment
+      summary: Record a payment
+      description: The invoice is settled once payments cover its amount within 1 CHF. Grant `invoicing:debtor_receipt`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/InvoicePaymentInput' } } }
+      responses:
+        '201': { description: The invoice with the payment, content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/invoices/{id}/payments/{paymentId}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+      - { name: paymentId, in: path, required: true, schema: { type: integer, format: int64 } }
+    delete:
+      tags: [Invoices]
+      operationId: cancelInvoicePayment
+      summary: Cancel a payment
+      description: The invoice is reopened unless the remaining payments still cover it. Grant `invoicing:invoice_modify`.
+      responses:
+        '200': { description: The invoice, content: { application/json: { schema: { $ref: '#/components/schemas/Invoice' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ----- advance requests ------------------------------------------------------------------------------------------
+  /api/folders/{folderId}/advance-requests:
+    parameters: [ { $ref: '#/components/parameters/FolderId' } ]
+    get:
+      tags: [AdvanceRequests]
+      operationId: listFolderAdvanceRequests
+      summary: Advance requests of a folder
+      description: Grant `invoicing:folder_requests`.
+      parameters:
+        - { name: paid, in: query, schema: { type: boolean } }
+        - { name: invoiced, in: query, description: Whether all its advances were deducted on an invoice, schema: { type: boolean } }
+      responses:
+        '200':
+          description: Requests, most recent first
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AdvanceRequest' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [AdvanceRequests]
+      operationId: createAdvanceRequest
+      summary: Request a provision
+      description: Grant `invoicing:request_create`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AdvanceRequestTermsInput' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/AdvanceRequest' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/folders/{folderId}/advance-request-draft:
+    parameters: [ { $ref: '#/components/parameters/FolderId' } ]
+    get:
+      tags: [AdvanceRequests]
+      operationId: prepareAdvanceRequest
+      summary: Figures shown when preparing a request
+      description: Grant `invoicing:request_create`.
+      responses:
+        '200': { description: The draft, content: { application/json: { schema: { $ref: '#/components/schemas/AdvanceRequestDraft' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/advance-requests:
+    get:
+      tags: [AdvanceRequests]
+      operationId: listOpenAdvanceRequests
+      summary: Unpaid advance requests
+      description: Grant `invoicing:debtors_open`.
+      responses:
+        '200':
+          description: Requests, oldest first
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AdvanceRequest' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/advance-requests/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [AdvanceRequests]
+      operationId: getAdvanceRequest
+      summary: Display an advance request with its advances
+      description: Grant `invoicing:request_display`.
+      responses:
+        '200': { description: The request, content: { application/json: { schema: { $ref: '#/components/schemas/AdvanceRequest' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [AdvanceRequests]
+      operationId: reviseAdvanceRequest
+      summary: Modify an advance request
+      description: Grant `invoicing:request_modify`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AdvanceRequestTermsInput' } } }
+      responses:
+        '200': { description: The modified request, content: { application/json: { schema: { $ref: '#/components/schemas/AdvanceRequest' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [AdvanceRequests]
+      operationId: deleteAdvanceRequest
+      summary: Delete an advance request and its advances
+      description: Grant `invoicing:request_modify`.
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/advance-requests/{id}/settlement:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    post:
+      tags: [AdvanceRequests]
+      operationId: settleAdvanceRequest
+      summary: Mark the request as paid
+      description: Today when no date is given. Grant `invoicing:request_modify`.
+      requestBody:
+        required: false
+        content: { application/json: { schema: { $ref: '#/components/schemas/DateInput' } } }
+      responses:
+        '200': { description: The settled request, content: { application/json: { schema: { $ref: '#/components/schemas/AdvanceRequest' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [AdvanceRequests]
+      operationId: reopenAdvanceRequest
+      summary: Reopen the request
+      description: Grant `invoicing:request_modify`.
+      responses:
+        '200': { description: The reopened request, content: { application/json: { schema: { $ref: '#/components/schemas/AdvanceRequest' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/advance-requests/{id}/recalls:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    post:
+      tags: [AdvanceRequests]
+      operationId: recallAdvanceRequest
+      summary: Send the next reminder
+      description: Today when no date is given. Grant `invoicing:request_modify`.
+      requestBody:
+        required: false
+        content: { application/json: { schema: { $ref: '#/components/schemas/DateInput' } } }
+      responses:
+        '201': { description: The request with its new reminder, content: { application/json: { schema: { $ref: '#/components/schemas/AdvanceRequest' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/advance-requests/{id}/recalls/{recallId}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+      - { name: recallId, in: path, required: true, schema: { type: integer, format: int64 } }
+    delete:
+      tags: [AdvanceRequests]
+      operationId: cancelAdvanceRequestRecall
+      summary: Cancel a reminder
+      description: Grant `invoicing:request_modify`.
+      responses:
+        '200': { description: The request, content: { application/json: { schema: { $ref: '#/components/schemas/AdvanceRequest' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ----- advances --------------------------------------------------------------------------------------------------
+  /api/folders/{folderId}/advances:
+    parameters: [ { $ref: '#/components/parameters/FolderId' } ]
+    get:
+      tags: [Advances]
+      operationId: listAdvances
+      summary: Advances of a folder
+      description: Grant `invoicing:folder_content`.
+      parameters:
+        - { name: invoiced, in: query, description: 'true for the advances deducted on an invoice, false for the available ones', schema: { type: boolean } }
+      responses:
+        '200':
+          description: Advances, most recent first
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Advance' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Advances]
+      operationId: receiveAdvance
+      summary: Receive an advance, answering a request or not
+      description: The request is settled once its advances cover it within 1 CHF. Grant `invoicing:advance_receipt`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AdvanceInput' } } }
+      responses:
+        '201': { description: Received, content: { application/json: { schema: { $ref: '#/components/schemas/Advance' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/advances/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [Advances]
+      operationId: getAdvance
+      summary: Display an advance
+      description: Grant `invoicing:folder_content`.
+      responses:
+        '200': { description: The advance, content: { application/json: { schema: { $ref: '#/components/schemas/Advance' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Advances]
+      operationId: cancelAdvance
+      summary: Cancel an advance not yet deducted on an invoice
+      description: Grant `invoicing:advance_receipt`.
+      responses:
+        '204': { description: Cancelled }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ----- tickets ---------------------------------------------------------------------------------------------------
+  /api/folders/{folderId}/tickets:
+    parameters: [ { $ref: '#/components/parameters/FolderId' } ]
+    get:
+      tags: [Tickets]
+      operationId: listTickets
+      summary: Payment slips of a folder
+      description: Grant `invoicing:folder_content`.
+      responses:
+        '200':
+          description: Payment slips
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Ticket' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Tickets]
+      operationId: registerTicket
+      summary: Register a typed or scanned payment slip reference
+      description: Optionally issued for an invoice or an advance request of the folder. A known reference is returned as is, except for cash slips ("Comptant"). Grant `invoicing:folder_modify`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/TicketInput' } } }
+      responses:
+        '201': { description: Registered, content: { application/json: { schema: { $ref: '#/components/schemas/Ticket' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/tickets/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [Tickets]
+      operationId: getTicket
+      summary: Display a payment slip
+      description: Grant `invoicing:folder_content`.
+      responses:
+        '200': { description: The payment slip, content: { application/json: { schema: { $ref: '#/components/schemas/Ticket' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      tags: [Tickets]
+      operationId: renumberTicket
+      summary: Correct the reference of a payment slip
+      description: Grant `invoicing:invoice_modify`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/TicketNumberInput' } } }
+      responses:
+        '200': { description: The payment slip, content: { application/json: { schema: { $ref: '#/components/schemas/Ticket' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Tickets]
+      operationId: deleteTicket
+      summary: Delete a payment slip used by no payment nor advance
+      description: Grant `invoicing:folder_modify`.
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ----- debtors ---------------------------------------------------------------------------------------------------
+  /api/debtors/overview:
+    get:
+      tags: [Debtors]
+      operationId: getDebtorsOverview
+      summary: Folders to invoice, open invoices and open requests
+      description: Grant `invoicing:debtors_open`.
+      responses:
+        '200': { description: The overview, content: { application/json: { schema: { $ref: '#/components/schemas/DebtorsOverview' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/debtors/lookup:
+    get:
+      tags: [Debtors]
+      operationId: lookupTicket
+      summary: Find the debtor of a typed or scanned payment slip reference
+      description: Grant `invoicing:debtor_search`.
+      parameters:
+        - { name: reference, in: query, required: true, schema: { type: string } }
+      responses:
+        '200': { description: The debtor, content: { application/json: { schema: { $ref: '#/components/schemas/TicketLookup' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/folders/{folderId}/customers/{customerId}/statement:
+    parameters:
+      - { $ref: '#/components/parameters/FolderId' }
+      - { $ref: '#/components/parameters/CustomerId' }
+    get:
+      tags: [Debtors]
+      operationId: getCustomerStatement
+      summary: What the customer still owes
+      description: Open invoices and requests of the folder with a positive remainder for the customer. Grant `invoicing:debtor_receipt`.
+      responses:
+        '200': { description: The statement, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerStatement' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/folders/{folderId}/customers/{customerId}/receipts:
+    parameters:
+      - { $ref: '#/components/parameters/FolderId' }
+      - { $ref: '#/components/parameters/CustomerId' }
+    post:
+      tags: [Debtors]
+      operationId: receivePayments
+      summary: Record what the customer paid on several invoices and requests
+      description: Invoice lines become invoice payments, request lines become advances; zero lines are ignored. Grant `invoicing:debtor_receipt`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ReceiptInput' } } }
+      responses:
+        '200': { description: The statement after the receipt, content: { application/json: { schema: { $ref: '#/components/schemas/CustomerStatement' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ----- bank statements -------------------------------------------------------------------------------------------
+  /api/bank-statements/analysis:
+    post:
+      tags: [BankStatements]
+      operationId: analyseBankStatement
+      summary: Read a camt.054 file and match its credits
+      description: |
+        Each credit is matched by its payment reference (the payment slip registered when printing, or the
+        reference itself) or, without one, suggested by amount and payer name. Transactions already imported are
+        DUPLICATE. Debits are left out. Nothing is recorded. Grant `invoicing:debtor_receipt`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/BankStatementInput' } } }
+      responses:
+        '200': { description: The credits and what they pay, content: { application/json: { schema: { $ref: '#/components/schemas/BankStatementAnalysis' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /api/bank-statements/receipts:
+    post:
+      tags: [BankStatements]
+      operationId: recordBankReceipts
+      summary: Record the credits confirmed for their documents
+      description: |
+        Each receipt is recorded as an invoice payment or an advance answering the request; beyond what the customer
+        owes (with a tolerance of 1 CHF) the rest becomes a spontaneous advance of the folder. A receipt already in
+        the books is skipped: the same bank transaction (`entryReference`), or without it the same document, customer,
+        date and amount. All or nothing.
+        Grant `invoicing:debtor_receipt`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/BankReceiptsInput' } } }
+      responses:
+        '200': { description: 'One result per receipt, in order', content: { application/json: { schema: { $ref: '#/components/schemas/BankReceiptsResult' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ----- documents -------------------------------------------------------------------------------------------------
+  /api/invoices/{id}/document:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    post:
+      tags: [Documents]
+      operationId: printInvoice
+      summary: Print an invoice
+      description: |
+        One copy per active customer (or a single one with merged addresses), each followed by a QR-bill for what
+        its recipient still owes. Nothing is stored. Grant `invoicing:invoice_display`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PrintInput' } } }
+      responses:
+        '200': { $ref: '#/components/responses/Pdf' }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/invoices/{id}/recalls/{recallId}/document:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+      - { name: recallId, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [Documents]
+      operationId: printInvoiceRecall
+      summary: Print a reminder of an invoice
+      description: Amounts and QR-bills claim what each customer still owes. Grant `invoicing:invoice_display`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PrintInput' } } }
+      responses:
+        '200': { $ref: '#/components/responses/Pdf' }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/advance-requests/{id}/document:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    post:
+      tags: [Documents]
+      operationId: printAdvanceRequest
+      summary: Print an advance request
+      description: Grant `invoicing:request_display`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PrintInput' } } }
+      responses:
+        '200': { $ref: '#/components/responses/Pdf' }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/advance-requests/{id}/recalls/{recallId}/document:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+      - { name: recallId, in: path, required: true, schema: { type: integer, format: int64 } }
+    post:
+      tags: [Documents]
+      operationId: printAdvanceRequestRecall
+      summary: Print a reminder of an advance request
+      description: Grant `invoicing:request_display`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PrintInput' } } }
+      responses:
+        '200': { $ref: '#/components/responses/Pdf' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ----- templates -------------------------------------------------------------------------------------------------
+  /api/document-models:
+    get:
+      tags: [Templates]
+      operationId: listDocumentModels
+      summary: Document models
+      parameters:
+        - { name: type, in: query, schema: { $ref: '#/components/schemas/DocumentType' } }
+      responses:
+        '200':
+          description: Models ordered by name
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/DocumentModel' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Templates]
+      operationId: createDocumentModel
+      summary: Create a document model
+      description: Grant `invoicing:models`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/DocumentModelInput' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/DocumentModel' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/document-models/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [Templates]
+      operationId: getDocumentModel
+      summary: Display a document model
+      responses:
+        '200': { description: The model, content: { application/json: { schema: { $ref: '#/components/schemas/DocumentModel' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [Templates]
+      operationId: updateDocumentModel
+      summary: Modify a document model
+      description: Grant `invoicing:models`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/DocumentModelInput' } } }
+      responses:
+        '200': { description: The modified model, content: { application/json: { schema: { $ref: '#/components/schemas/DocumentModel' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Templates]
+      operationId: deleteDocumentModel
+      summary: Delete a document model
+      description: Grant `invoicing:models`.
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/wordings:
+    get:
+      tags: [Templates]
+      operationId: listWordings
+      summary: Predefined honorary descriptions
+      responses:
+        '200':
+          description: Wordings in alphabetical order
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Wording' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Templates]
+      operationId: addWording
+      summary: Add a wording
+      description: Grant `invoicing:wordings_modify`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/WordingInput' } } }
+      responses:
+        '201': { description: Added, content: { application/json: { schema: { $ref: '#/components/schemas/Wording' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/wordings/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    delete:
+      tags: [Templates]
+      operationId: deleteWording
+      summary: Remove a wording
+      description: Grant `invoicing:wordings_modify`.
+      responses:
+        '204': { description: Removed }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ----- settings --------------------------------------------------------------------------------------------------
+  /api/settings/invoicing:
+    get:
+      tags: [Settings]
+      operationId: getInvoicingSettings
+      summary: Invoicing defaults
+      responses:
+        '200': { description: The defaults, content: { application/json: { schema: { $ref: '#/components/schemas/InvoicingSettings' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [Settings]
+      operationId: changeInvoicingSettings
+      summary: Change the invoicing defaults
+      description: Grant `invoicing:parameters_modify`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/InvoicingSettings' } } }
+      responses:
+        '200': { description: The defaults, content: { application/json: { schema: { $ref: '#/components/schemas/InvoicingSettings' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/settings/booking:
+    get:
+      tags: [Settings]
+      operationId: getBookingSettings
+      summary: Booking defaults
+      responses:
+        '200': { description: The defaults, content: { application/json: { schema: { $ref: '#/components/schemas/BookingSettings' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [Settings]
+      operationId: changeBookingSettings
+      summary: Change the booking defaults
+      description: Grant `booking:parameters_modify`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/BookingSettings' } } }
+      responses:
+        '200': { description: The defaults, content: { application/json: { schema: { $ref: '#/components/schemas/BookingSettings' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ----- booking ---------------------------------------------------------------------------------------------------
+  /api/booking/payments:
+    get:
+      tags: [Booking]
+      operationId: listOfficePayments
+      summary: Outgoing payments of the office books
+      description: Grant `booking:payments_list`.
+      responses:
+        '200':
+          description: Payments, most recent first
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/OutgoingPayment' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Booking]
+      operationId: recordOfficePayment
+      summary: Record an outgoing payment in the office books
+      description: The amount includes VAT; tax = amount × rate / (1 + rate). Grant `booking:payment_create`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/OutgoingPaymentInput' } } }
+      responses:
+        '201': { description: Recorded, content: { application/json: { schema: { $ref: '#/components/schemas/OutgoingPayment' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/folders/{folderId}/booking/payments:
+    parameters: [ { $ref: '#/components/parameters/FolderId' } ]
+    get:
+      tags: [Booking]
+      operationId: listFolderPayments
+      summary: Outgoing payments of a tutelage folder
+      description: Grant `booking:payments_list`.
+      responses:
+        '200':
+          description: Payments, most recently paid first
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/OutgoingPayment' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Booking]
+      operationId: recordFolderPayment
+      summary: Record an outgoing payment in the books of a folder
+      description: Grant `booking:payment_create`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/OutgoingPaymentInput' } } }
+      responses:
+        '201': { description: Recorded, content: { application/json: { schema: { $ref: '#/components/schemas/OutgoingPayment' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/booking/payments/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [Booking]
+      operationId: getOutgoingPayment
+      summary: Display an outgoing payment
+      description: Grant `booking:payment_display`.
+      responses:
+        '200': { description: The payment, content: { application/json: { schema: { $ref: '#/components/schemas/OutgoingPayment' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [Booking]
+      operationId: updateOutgoingPayment
+      summary: Modify an outgoing payment
+      description: Grant `booking:payment_modify`. A payment produced by a standing order or booked for a VAT payment cannot be modified (422), and `PERMANENT` cannot be chosen as kind.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/OutgoingPaymentInput' } } }
+      responses:
+        '200': { description: The modified payment, content: { application/json: { schema: { $ref: '#/components/schemas/OutgoingPayment' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Booking]
+      operationId: deleteOutgoingPayment
+      summary: Delete an outgoing payment
+      description: Grant `booking:payment_modify`. An expense booked for a VAT payment is deleted with it (422 here).
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/booking/standing-orders:
+    get:
+      tags: [Booking]
+      operationId: listOfficeStandingOrders
+      summary: Standing orders of the office books
+      description: Grant `booking:orders_list`.
+      responses:
+        '200':
+          description: Orders, most recent first
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/StandingOrder' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Booking]
+      operationId: createOfficeStandingOrder
+      summary: Create a standing order in the office books
+      description: Grant `booking:order_create`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StandingOrderInput' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/StandingOrder' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/folders/{folderId}/booking/standing-orders:
+    parameters: [ { $ref: '#/components/parameters/FolderId' } ]
+    get:
+      tags: [Booking]
+      operationId: listFolderStandingOrders
+      summary: Standing orders of a tutelage folder
+      description: Grant `booking:orders_list`.
+      responses:
+        '200':
+          description: Orders, most recent first
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/StandingOrder' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Booking]
+      operationId: createFolderStandingOrder
+      summary: Create a standing order in the books of a folder
+      description: Grant `booking:order_create`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StandingOrderInput' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/StandingOrder' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/booking/standing-orders/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    get:
+      tags: [Booking]
+      operationId: getStandingOrder
+      summary: Display a standing order
+      description: Grant `booking:orders_list`.
+      responses:
+        '200': { description: The order, content: { application/json: { schema: { $ref: '#/components/schemas/StandingOrder' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [Booking]
+      operationId: updateStandingOrder
+      summary: Modify a standing order
+      description: Grant `booking:order_modify`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StandingOrderInput' } } }
+      responses:
+        '200': { description: The modified order, content: { application/json: { schema: { $ref: '#/components/schemas/StandingOrder' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Booking]
+      operationId: deleteStandingOrder
+      summary: Delete a standing order
+      description: Grant `booking:order_modify`.
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/booking/standing-orders/next-execution:
+    get:
+      tags: [Booking]
+      operationId: getNextExecution
+      summary: Month the standing orders should be executed for next
+      description: The month after the last execution, or the current month. Grant `booking:orders`.
+      parameters:
+        - { name: folderId, in: query, description: Absent for the office books, schema: { type: integer, format: int64 } }
+      responses:
+        '200': { description: The next month, content: { application/json: { schema: { $ref: '#/components/schemas/NextExecution' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/booking/standing-orders/executions:
+    post:
+      tags: [Booking]
+      operationId: executeStandingOrders
+      summary: Book the payments of the enabled standing orders for a month
+      description: Each payment is dated on the order's day, clamped to the month length, and already paid. Grant `booking:order_modify`.
+      requestBody:
+        required: false
+        content: { application/json: { schema: { $ref: '#/components/schemas/ExecutionInput' } } }
+      responses:
+        '201':
+          description: Payments booked
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/OutgoingPayment' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ----- VAT -------------------------------------------------------------------------------------------------------
+  /api/booking/vat-payments:
+    get:
+      tags: [Vat]
+      operationId: listVatPayments
+      summary: VAT paid, most recent period first
+      description: Grant `booking:tax_summary`.
+      responses:
+        '200': { description: The payments, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/VatPayment' } } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Vat]
+      operationId: recordVatPayment
+      summary: Record that the VAT of a period was paid
+      description: |
+        The money received and the net tax rate are taken from the income report of the period and stored with the
+        payment. Without `amount`, the VAT due according to the books is recorded. Periods cannot overlap (422).
+        The amount is also booked as a paid office expense to the tax administration, linked by `expenseId`.
+        Grant `booking:vat_payment`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/VatPaymentInput' } } }
+      responses:
+        '201': { description: The recorded payment, content: { application/json: { schema: { $ref: '#/components/schemas/VatPayment' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/booking/vat-payments/{id}:
+    parameters: [ { $ref: '#/components/parameters/Id' } ]
+    delete:
+      tags: [Vat]
+      operationId: deleteVatPayment
+      summary: Delete a VAT payment recorded by mistake
+      description: The office expense booked for it is deleted too. Grant `booking:vat_payment`.
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ----- reports ---------------------------------------------------------------------------------------------------
+  /api/reports/income:
+    get:
+      tags: [Reports]
+      operationId: getIncomeReport
+      summary: Incomes of a period and the VAT owed on them
+      description: Invoice payments and advances of invoicing folders. Grant `booking:tax_summary`.
+      parameters:
+        - { $ref: '#/components/parameters/From' }
+        - { $ref: '#/components/parameters/To' }
+      responses:
+        '200': { description: The report, content: { application/json: { schema: { $ref: '#/components/schemas/IncomeReport' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/reports/expenses:
+    get:
+      tags: [Reports]
+      operationId: getExpenseReport
+      summary: Office payments paid in a period
+      description: Grant `booking:tax_summary`.
+      parameters:
+        - { $ref: '#/components/parameters/From' }
+        - { $ref: '#/components/parameters/To' }
+      responses:
+        '200': { description: The report, content: { application/json: { schema: { $ref: '#/components/schemas/ExpenseReport' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/reports/period-statement:
+    get:
+      tags: [Reports]
+      operationId: printPeriodStatement
+      summary: Statements of a period as PDF
+      description: |
+        Incomes (invoice payments and advances, with the VAT owed at the net tax rate), then the expenses of the office,
+        like the legacy "relevés". Generated on demand. Grant `booking:tax_summary`.
+      parameters:
+        - { $ref: '#/components/parameters/From' }
+        - { $ref: '#/components/parameters/To' }
+      responses:
+        '200': { $ref: '#/components/responses/Pdf' }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/reports/monthly-overview:
+    get:
+      tags: [Reports]
+      operationId: getMonthlyOverview
+      summary: Incomes and expenses per month
+      description: Grant `booking:overview`.
+      responses:
+        '200':
+          description: Years, most recent first
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/YearOverview' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/reports/user-statistics:
+    get:
+      tags: [Reports]
+      operationId: getUserStatistics
+      summary: Honoraries and incomes of the folders a user handles
+      description: Folders whose handler is the user's shortcut (or user name). Grant `booking:statistics_search`.
+      parameters:
+        - { name: username, in: query, required: true, schema: { type: string } }
+        - { $ref: '#/components/parameters/From' }
+        - { $ref: '#/components/parameters/To' }
+      responses:
+        '200': { description: The statistics, content: { application/json: { schema: { $ref: '#/components/schemas/UserStatistics' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+
+  # ----- users -----------------------------------------------------------------------------------------------------
+  /api/me:
+    get:
+      tags: [Users]
+      operationId: getCurrentUser
+      summary: The authenticated user and his grants
+      responses:
+        '200': { description: The user, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/users:
+    get:
+      tags: [Users]
+      operationId: listUsers
+      summary: Users
+      description: Grant `admin:users`.
+      responses:
+        '200':
+          description: Users ordered by name
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/UserSummary' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Users]
+      operationId: createUser
+      summary: Create a user
+      description: Grant `admin:users`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateUserInput' } } }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/users/{username}:
+    parameters: [ { $ref: '#/components/parameters/Username' } ]
+    get:
+      tags: [Users]
+      operationId: getUser
+      summary: Display a user and his grants
+      description: Grant `admin:users`.
+      responses:
+        '200': { description: The user, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [Users]
+      operationId: updateUser
+      summary: Modify a user
+      description: Grant `admin:users`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/UpdateUserInput' } } }
+      responses:
+        '200': { description: The user, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Users]
+      operationId: deleteUser
+      summary: Delete a user and his grants
+      description: Grant `admin:users`.
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/users/{username}/grants:
+    parameters: [ { $ref: '#/components/parameters/Username' } ]
+    put:
+      tags: [Users]
+      operationId: grantAll
+      summary: Grant every page
+      description: Grant `admin:users`.
+      responses:
+        '200': { description: The user, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Users]
+      operationId: revokeAll
+      summary: Revoke every grant
+      description: Grant `admin:users`.
+      responses:
+        '200': { description: The user, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/users/{username}/grants/{module}/{page}:
+    parameters:
+      - { $ref: '#/components/parameters/Username' }
+      - { name: module, in: path, required: true, schema: { type: string } }
+      - { name: page, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Users]
+      operationId: grant
+      summary: Grant one page
+      description: Grant `admin:users`.
+      responses:
+        '200': { description: The user, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      tags: [Users]
+      operationId: revoke
+      summary: Revoke one page
+      description: Grant `admin:users`.
+      responses:
+        '200': { description: The user, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+  /api/grants:
+    get:
+      tags: [Users]
+      operationId: listGrantCatalog
+      summary: Every grant known by the application
+      description: Grant `admin:users`.
+      responses:
+        '200':
+          description: Grants
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Grant' } } } }
+        default: { $ref: '#/components/responses/Problem' }
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+
+  parameters:
+    Id: { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    FolderId: { name: folderId, in: path, required: true, schema: { type: integer, format: int64 } }
+    CustomerId: { name: customerId, in: path, required: true, schema: { type: integer, format: int64 } }
+    Username: { name: username, in: path, required: true, schema: { type: string, maxLength: 16 } }
+    From: { name: from, in: query, required: true, schema: { type: string, format: date } }
+    To: { name: to, in: query, required: true, schema: { type: string, format: date } }
+
+  responses:
+    Pdf:
+      description: The PDF, named in the Content-Disposition header
+      content:
+        application/pdf: { schema: { type: string, format: binary } }
+    Problem:
+      description: Error (400 invalid request, 401 not authenticated, 403 missing grant, 404 unknown resource, 422 business rule violated)
+      content:
+        application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } }
+        application/json: { schema: { $ref: '#/components/schemas/Problem' } }
+
+  schemas:
+    # ----- shared ---------------------------------------------------------------------------------------------------
+    Problem:
+      type: object
+      description: RFC 9457 problem details
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string, description: 'In English, for logs and developers: clients show the translation of code' }
+        instance: { type: string }
+        code:
+          type: string
+          description: Stable code of the error, to translate (the meaning and parameters of each are described in ErrorCode.java)
+          enum:
+            - INVALID_REQUEST
+            - NOT_FOUND
+            - FORBIDDEN
+            - FIELD_MANDATORY
+            - FIELD_TOO_LONG
+            - NEGATIVE_VALUE
+            - AMOUNT_NOT_POSITIVE
+            - PERIOD_INVERTED
+            - TOO_MANY_EXPENSES
+            - TOO_MANY_LAYOUTS
+            - DAY_OF_MONTH
+            - FOLDER_TYPE_MANDATORY
+            - FOLDER_STATUS_EXISTS
+            - NOT_A_PARTY
+            - OTHER_FOLDER
+            - CUSTOMER_HAS_HISTORY
+            - NO_ACTIVE_CUSTOMER
+            - HONORARY_INVOICED
+            - NOTHING_TO_INVOICE
+            - DOCUMENT_PAID
+            - RECALL_NOT_OF_DOCUMENT
+            - PAYMENT_NOT_OF_INVOICE
+            - ADVANCE_DEDUCTED
+            - TICKET_USED
+            - PAYMENT_REFERENCE_INVALID
+            - NO_CREDITOR_ACCOUNT
+            - MODEL_NAME_EXISTS
+            - MODEL_TYPE_MISMATCH
+            - QR_BILL_INVALID
+            - PAYMENT_FROM_STANDING_ORDER
+            - PERMANENT_KIND_RESERVED
+            - VAT_PERIOD_OVERLAP
+            - VAT_PAID_BEFORE_PERIOD
+            - EXPENSE_FOLLOWS_VAT_PAYMENT
+            - VAT_ALREADY_BOOKED
+            - BANK_FILE_INVALID
+            - BANK_RECEIPT_INVALID
+            - USER_EXISTS
+            - UNKNOWN_GRANT
+        params:
+          type: object
+          additionalProperties: true
+          description: 'Values for the translation of code, e.g. {"from": "2026-01-01", "to": "2026-06-30", "paidOn": "2026-08-28"}'
+    Amount:
+      type: number
+      description: Amount in Swiss francs
+      example: 312.5
+    Percent:
+      type: number
+      minimum: 0
+      description: Rate in percent
+      example: 7.7
+    DateInput:
+      type: object
+      properties:
+        date: { type: string, format: date, description: Today when absent }
+    Share:
+      type: object
+      description: Share of an amount owed by one customer
+      required: [customerId, amount]
+      properties:
+        customerId: { type: integer, format: int64 }
+        amount: { $ref: '#/components/schemas/Amount' }
+    CustomerShare:
+      type: object
+      properties:
+        customerId: { type: integer, format: int64 }
+        amount: { $ref: '#/components/schemas/Amount' }
+        paid: { $ref: '#/components/schemas/Amount' }
+        remaining: { $ref: '#/components/schemas/Amount' }
+    Recall:
+      type: object
+      description: Payment reminder
+      properties:
+        id: { type: integer, format: int64 }
+        date: { type: string, format: date }
+        degree: { type: integer, description: 1 for the first reminder }
+        amount: { $ref: '#/components/schemas/Amount' }
+
+    # ----- folders --------------------------------------------------------------------------------------------------
+    FolderType:
+      type: string
+      enum: [UNDEFINED, INVOICING, TUTELAGE]
+      description: UNDEFINED only for legacy folders; not accepted on input
+    FolderInput:
+      type: object
+      required: [type, name]
+      properties:
+        type: { $ref: '#/components/schemas/FolderType' }
+        openingDate: { type: string, format: date }
+        name: { type: string, minLength: 1, maxLength: 50 }
+        path: { type: string, maxLength: 128 }
+        status: { type: string, maxLength: 80 }
+        firstDate: { type: string, format: date, description: Date of the first meeting }
+        handledBy: { type: string, maxLength: 10, description: Shortcut of the person in charge }
+        comment: { type: string }
+        wayToOurOffice: { type: string, description: How the clients found the office }
+    Folder:
+      type: object
+      required: [id]
+      properties:
+        id: { type: integer, format: int64 }
+        number: { type: integer, format: int64, description: Equal to the id }
+        type: { $ref: '#/components/schemas/FolderType' }
+        openingDate: { type: string, format: date }
+        name: { type: string }
+        path: { type: string }
+        status: { type: string }
+        firstDate: { type: string, format: date }
+        handledBy: { type: string }
+        comment: { type: string }
+        wayToOurOffice: { type: string }
+    OpenFolderInput:
+      type: object
+      required: [folder]
+      properties:
+        folder: { $ref: '#/components/schemas/FolderInput' }
+        firstCustomer: { $ref: '#/components/schemas/CustomerInput' }
+    OpenedFolder:
+      type: object
+      properties:
+        folder: { $ref: '#/components/schemas/Folder' }
+        firstCustomer: { $ref: '#/components/schemas/Customer' }
+    FolderStatus:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+    FolderStatusInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+    FolderRef:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+
+    # ----- customers ------------------------------------------------------------------------------------------------
+    CustomerInput:
+      type: object
+      properties:
+        title: { type: string, maxLength: 20 }
+        firstName: { type: string, maxLength: 50 }
+        lastName: { type: string, maxLength: 50 }
+        street: { type: string, maxLength: 128 }
+        zip: { type: string, maxLength: 10 }
+        city: { type: string, maxLength: 30 }
+        privatePhone: { type: string, maxLength: 20 }
+        professionalPhone: { type: string, maxLength: 20 }
+        mobilePhone: { type: string, maxLength: 20 }
+        mobilePhone2: { type: string, maxLength: 20 }
+        email: { type: string, maxLength: 50 }
+        email2: { type: string, maxLength: 50 }
+        email3: { type: string, maxLength: 50 }
+        comment: { type: string }
+        billing: { type: boolean, default: false, description: Pays the whole invoice instead of his share }
+        activeSince: { type: string, format: date }
+        activeUntil: { type: string, format: date }
+    Customer:
+      type: object
+      required: [id]
+      properties:
+        id: { type: integer, format: int64 }
+        folderId: { type: integer, format: int64 }
+        fullName: { type: string }
+        title: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        street: { type: string }
+        zip: { type: string }
+        city: { type: string }
+        privatePhone: { type: string }
+        professionalPhone: { type: string }
+        mobilePhone: { type: string }
+        mobilePhone2: { type: string }
+        email: { type: string }
+        email2: { type: string }
+        email3: { type: string }
+        comment: { type: string }
+        billing: { type: boolean }
+        activeSince: { type: string, format: date }
+        activeUntil: { type: string, format: date }
+
+    # ----- honoraries -----------------------------------------------------------------------------------------------
+    Expense:
+      type: object
+      required: [amount]
+      properties:
+        amount: { $ref: '#/components/schemas/Amount' }
+        description: { type: string, maxLength: 50 }
+    HonoraryInput:
+      type: object
+      required: [date]
+      properties:
+        date: { type: string, format: date }
+        description: { type: string, maxLength: 1024 }
+        minutes: { type: integer, minimum: 0, default: 0 }
+        hourlyRate: { $ref: '#/components/schemas/Amount' }
+        expenses:
+          type: array
+          maxItems: 4
+          items: { $ref: '#/components/schemas/Expense' }
+    Honorary:
+      type: object
+      required: [id]
+      properties:
+        id: { type: integer, format: int64 }
+        folderId: { type: integer, format: int64 }
+        date: { type: string, format: date }
+        description: { type: string }
+        minutes: { type: integer }
+        hourlyRate: { $ref: '#/components/schemas/Amount' }
+        expenses: { type: array, items: { $ref: '#/components/schemas/Expense' } }
+        amount: { $ref: '#/components/schemas/Amount' }
+        invoiceId: { type: integer, format: int64, description: Absent while open }
+
+    # ----- invoices -------------------------------------------------------------------------------------------------
+    InvoiceTermsInput:
+      type: object
+      required: [date]
+      properties:
+        date: { type: string, format: date }
+        delayDays: { type: integer, minimum: 0, default: 0 }
+        discountRatePercent: { $ref: '#/components/schemas/Percent' }
+        discount: { type: number, minimum: 0 }
+        taxRatePercent: { $ref: '#/components/schemas/Percent' }
+        shares: { type: array, items: { $ref: '#/components/schemas/Share' } }
+        comment: { type: string }
+    InvoicePaymentInput:
+      type: object
+      required: [date, amount]
+      properties:
+        customerId: { type: integer, format: int64 }
+        date: { type: string, format: date }
+        amount: { type: number, exclusiveMinimum: true, minimum: 0 }
+        ticketId: { type: integer, format: int64 }
+        iban: { type: string, maxLength: 25 }
+        cash: { type: boolean, default: false }
+    InvoicePayment:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        customerId: { type: integer, format: int64 }
+        date: { type: string, format: date }
+        amount: { $ref: '#/components/schemas/Amount' }
+        ticketId: { type: integer, format: int64 }
+        iban: { type: string }
+        cash: { type: boolean }
+    Invoice:
+      type: object
+      required: [id]
+      properties:
+        id: { type: integer, format: int64 }
+        folderId: { type: integer, format: int64 }
+        date: { type: string, format: date }
+        delayDays: { type: integer }
+        dueDate: { type: string, format: date }
+        honorariesSum: { $ref: '#/components/schemas/Amount' }
+        advancedSum: { $ref: '#/components/schemas/Amount' }
+        discountRatePercent: { $ref: '#/components/schemas/Percent' }
+        discount: { $ref: '#/components/schemas/Amount' }
+        taxRatePercent: { $ref: '#/components/schemas/Percent' }
+        tax: { $ref: '#/components/schemas/Amount' }
+        amount: { $ref: '#/components/schemas/Amount' }
+        paidSum: { $ref: '#/components/schemas/Amount' }
+        remainingSum: { $ref: '#/components/schemas/Amount' }
+        paid: { type: boolean }
+        paidOn: { type: string, format: date }
+        comment: { type: string }
+        shares: { type: array, items: { $ref: '#/components/schemas/CustomerShare' } }
+        payments: { type: array, items: { $ref: '#/components/schemas/InvoicePayment' } }
+        recalls: { type: array, items: { $ref: '#/components/schemas/Recall' } }
+    InvoiceDraft:
+      type: object
+      properties:
+        folderId: { type: integer, format: int64 }
+        honoraries: { type: array, items: { $ref: '#/components/schemas/Honorary' } }
+        advances: { type: array, items: { $ref: '#/components/schemas/Advance' } }
+        honorariesSum: { $ref: '#/components/schemas/Amount' }
+        advancedSum: { $ref: '#/components/schemas/Amount' }
+        customers: { type: array, items: { $ref: '#/components/schemas/Customer' } }
+        defaultDelayDays: { type: integer }
+        defaultTaxRatePercent: { $ref: '#/components/schemas/Percent' }
+
+    # ----- advance requests and advances ----------------------------------------------------------------------------
+    AdvanceRequestTermsInput:
+      type: object
+      required: [date, amount]
+      properties:
+        date: { type: string, format: date }
+        meetingDate: { type: string, format: date }
+        delayDays: { type: integer, minimum: 0, default: 0 }
+        amount: { type: number, exclusiveMinimum: true, minimum: 0 }
+        shares: { type: array, items: { $ref: '#/components/schemas/Share' } }
+        comment: { type: string }
+    AdvanceRequest:
+      type: object
+      required: [id]
+      properties:
+        id: { type: integer, format: int64 }
+        folderId: { type: integer, format: int64 }
+        date: { type: string, format: date }
+        meetingDate: { type: string, format: date }
+        delayDays: { type: integer }
+        dueDate: { type: string, format: date }
+        amount: { $ref: '#/components/schemas/Amount' }
+        honorariesSum: { $ref: '#/components/schemas/Amount' }
+        advancedSum: { $ref: '#/components/schemas/Amount' }
+        paidSum: { $ref: '#/components/schemas/Amount' }
+        remainingSum: { $ref: '#/components/schemas/Amount' }
+        paid: { type: boolean }
+        paidOn: { type: string, format: date }
+        invoiced: { type: boolean }
+        comment: { type: string }
+        shares: { type: array, items: { $ref: '#/components/schemas/CustomerShare' } }
+        advances: { type: array, items: { $ref: '#/components/schemas/Advance' } }
+        recalls: { type: array, items: { $ref: '#/components/schemas/Recall' } }
+    AdvanceRequestDraft:
+      type: object
+      properties:
+        folderId: { type: integer, format: int64 }
+        openHonorariesSum: { $ref: '#/components/schemas/Amount' }
+        availableAdvancesSum: { $ref: '#/components/schemas/Amount' }
+        uncoveredHonorariesSum: { $ref: '#/components/schemas/Amount' }
+        customers: { type: array, items: { $ref: '#/components/schemas/Customer' } }
+        defaultDelayDays: { type: integer }
+    AdvanceInput:
+      type: object
+      required: [date, amount]
+      properties:
+        requestId: { type: integer, format: int64, description: 'Request answered, absent for a spontaneous advance' }
+        customerId: { type: integer, format: int64 }
+        date: { type: string, format: date }
+        amount: { type: number, exclusiveMinimum: true, minimum: 0 }
+        ticketId: { type: integer, format: int64 }
+        iban: { type: string, maxLength: 25 }
+        cash: { type: boolean, default: false }
+    Advance:
+      type: object
+      required: [id]
+      properties:
+        id: { type: integer, format: int64 }
+        folderId: { type: integer, format: int64 }
+        requestId: { type: integer, format: int64 }
+        customerId: { type: integer, format: int64 }
+        date: { type: string, format: date }
+        amount: { $ref: '#/components/schemas/Amount' }
+        ticketId: { type: integer, format: int64 }
+        iban: { type: string }
+        cash: { type: boolean }
+        invoiceId: { type: integer, format: int64, description: Invoice it was deducted on }
+
+    # ----- tickets and debtors --------------------------------------------------------------------------------------
+    TicketInput:
+      type: object
+      required: [reference]
+      properties:
+        reference: { type: string, minLength: 1, maxLength: 256, description: Typed reference or scanned slip line }
+        customerId: { type: integer, format: int64 }
+        invoiceId: { type: integer, format: int64, description: Invoice the slip is issued for }
+        requestId: { type: integer, format: int64, description: Advance request the slip is issued for }
+    TicketNumberInput:
+      type: object
+      required: [number]
+      properties:
+        number: { type: string, minLength: 1, maxLength: 128 }
+    Ticket:
+      type: object
+      required: [id]
+      properties:
+        id: { type: integer, format: int64 }
+        number: { type: string }
+        folderId: { type: integer, format: int64 }
+        customerId: { type: integer, format: int64 }
+        invoiceId: { type: integer, format: int64, description: Invoice the slip was issued for }
+        requestId: { type: integer, format: int64, description: Advance request the slip was issued for }
+        cash: { type: boolean }
+        used: { type: boolean, description: Used by a payment or an advance }
+    OpenItem:
+      type: object
+      properties:
+        documentId: { type: integer, format: int64, description: Invoice or advance request id }
+        date: { type: string, format: date }
+        dueDate: { type: string, format: date }
+        share: { $ref: '#/components/schemas/Amount' }
+        paid: { $ref: '#/components/schemas/Amount' }
+        remaining: { $ref: '#/components/schemas/Amount' }
+    CustomerStatement:
+      type: object
+      properties:
+        folderId: { type: integer, format: int64 }
+        folderName: { type: string }
+        customerId: { type: integer, format: int64 }
+        customerName: { type: string }
+        invoices: { type: array, items: { $ref: '#/components/schemas/OpenItem' } }
+        requests: { type: array, items: { $ref: '#/components/schemas/OpenItem' } }
+        totalRemaining: { $ref: '#/components/schemas/Amount' }
+    ReceiptLine:
+      type: object
+      required: [documentId, date, amount]
+      properties:
+        documentId: { type: integer, format: int64, description: Invoice or advance request id }
+        date: { type: string, format: date }
+        amount: { $ref: '#/components/schemas/Amount' }
+        iban: { type: string, maxLength: 25 }
+        cash: { type: boolean, default: false }
+    ReceiptInput:
+      type: object
+      properties:
+        ticketId: { type: integer, format: int64 }
+        invoices: { type: array, items: { $ref: '#/components/schemas/ReceiptLine' } }
+        requests: { type: array, items: { $ref: '#/components/schemas/ReceiptLine' } }
+    FolderToInvoice:
+      type: object
+      properties:
+        folderId: { type: integer, format: int64 }
+        folderName: { type: string }
+        toBeInvoiced: { $ref: '#/components/schemas/Amount' }
+        available: { $ref: '#/components/schemas/Amount' }
+        uncovered: { $ref: '#/components/schemas/Amount' }
+    OpenDebt:
+      type: object
+      properties:
+        documentId: { type: integer, format: int64 }
+        folderId: { type: integer, format: int64 }
+        folderName: { type: string }
+        date: { type: string, format: date }
+        dueDate: { type: string, format: date }
+        daysOverdue: { type: integer, format: int64, description: Negative while not yet due }
+        amount: { $ref: '#/components/schemas/Amount' }
+        remaining: { $ref: '#/components/schemas/Amount' }
+        recallCount: { type: integer }
+        lastRecallDate: { type: string, format: date }
+    DebtorsOverview:
+      type: object
+      properties:
+        foldersToInvoice: { type: array, items: { $ref: '#/components/schemas/FolderToInvoice' } }
+        foldersTotal: { $ref: '#/components/schemas/Amount' }
+        openInvoices: { type: array, items: { $ref: '#/components/schemas/OpenDebt' } }
+        invoicesTotal: { $ref: '#/components/schemas/Amount' }
+        openRequests: { type: array, items: { $ref: '#/components/schemas/OpenDebt' } }
+        requestsTotal: { $ref: '#/components/schemas/Amount' }
+    PaymentLine:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        invoiceId: { type: integer, format: int64 }
+        folderId: { type: integer, format: int64 }
+        date: { type: string, format: date }
+        amount: { $ref: '#/components/schemas/Amount' }
+        customerId: { type: integer, format: int64 }
+    TicketLookup:
+      type: object
+      properties:
+        ticketId: { type: integer, format: int64 }
+        number: { type: string }
+        folderId: { type: integer, format: int64 }
+        folderName: { type: string }
+        customerId: { type: integer, format: int64 }
+        customerName: { type: string }
+        invoiceId: { type: integer, format: int64, description: Invoice the slip was issued for }
+        requestId: { type: integer, format: int64, description: Advance request the slip was issued for }
+        payments: { type: array, items: { $ref: '#/components/schemas/PaymentLine' } }
+        advances: { type: array, items: { $ref: '#/components/schemas/Advance' } }
+        statement: { $ref: '#/components/schemas/CustomerStatement' }
+
+    PrintInput:
+      type: object
+      required: [modelId]
+      properties:
+        modelId: { type: integer, format: int64, description: Letter template; its type must match the document }
+        content:
+          type: string
+          description: 'Letter text edited for this print (HTML or plain text, with $placeholders); the template text when absent'
+        attachments: { type: integer, minimum: 0, maximum: 9, default: 0, description: 'Attachments mentioned on the first page (0: none)' }
+        mergeAddresses: { type: boolean, default: false, description: One letter to all customers instead of one copy each }
+
+    # ----- bank statements ------------------------------------------------------------------------------------------
+    BankStatementInput:
+      type: object
+      required: [content]
+      properties:
+        fileName: { type: string, maxLength: 255 }
+        content: { type: string, maxLength: 20000000, description: The camt.054 XML file as text }
+    BankDocumentKind:
+      type: string
+      enum: [INVOICE, ADVANCE_REQUEST]
+    BankTarget:
+      type: object
+      properties:
+        kind: { $ref: '#/components/schemas/BankDocumentKind' }
+        documentId: { type: integer, format: int64 }
+        folderId: { type: integer, format: int64 }
+        folderName: { type: string }
+        customerId: { type: integer, format: int64 }
+        customerName: { type: string }
+    BankEntry:
+      type: object
+      properties:
+        entryReference: { type: string, description: Reference of the bank for the transaction }
+        date: { type: string, format: date }
+        amount: { $ref: '#/components/schemas/Amount' }
+        currency: { type: string }
+        reference: { type: string, description: QR or creditor reference of the payment }
+        debtorName: { type: string }
+        debtorIban: { type: string }
+        remittance: { type: string, description: Free text of the payer }
+        status:
+          type: string
+          enum: [READY, CHECK, UNMATCHED, DUPLICATE]
+          description: 'READY: paid by reference; CHECK: suggestion or overpayment to confirm; UNMATCHED: no document; DUPLICATE: already recorded'
+        problem:
+          type: string
+          enum: [NONE, SUGGESTED, OVERPAID, DOCUMENT_PAID, UNKNOWN_REFERENCE, NOT_FOUND, CURRENCY]
+        target: { $ref: '#/components/schemas/BankTarget' }
+        remaining: { description: What the customer still owed on the target, allOf: [{ $ref: '#/components/schemas/Amount' }] }
+    BankStatementAnalysis:
+      type: object
+      properties:
+        accountIban: { type: string }
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        skippedDebits: { type: integer }
+        entries: { type: array, items: { $ref: '#/components/schemas/BankEntry' } }
+    BankReceiptInput:
+      type: object
+      required: [kind, documentId, date, amount]
+      properties:
+        kind: { $ref: '#/components/schemas/BankDocumentKind' }
+        documentId: { type: integer, format: int64 }
+        customerId: { type: integer, format: int64, description: 'The payer; absent to take the customer owing that amount, else the first owing' }
+        date: { type: string, format: date }
+        amount: { type: number, exclusiveMinimum: true, minimum: 0 }
+        iban: { type: string, maxLength: 34 }
+        reference: { type: string, maxLength: 80 }
+        entryReference: { type: string, maxLength: 80, description: 'Reference of the bank for the transaction: a transaction is imported only once' }
+    BankReceiptsInput:
+      type: object
+      required: [receipts]
+      properties:
+        receipts: { type: array, items: { $ref: '#/components/schemas/BankReceiptInput' } }
+    BankReceiptResult:
+      type: object
+      properties:
+        recorded: { type: boolean, description: False when the same payment was already recorded }
+        settled: { type: boolean, description: The document is now paid }
+        advance: { description: Part booked as a spontaneous advance, allOf: [{ $ref: '#/components/schemas/Amount' }] }
+    BankReceiptsResult:
+      type: object
+      properties:
+        results: { type: array, items: { $ref: '#/components/schemas/BankReceiptResult' } }
+
+    # ----- templates and settings -----------------------------------------------------------------------------------
+    DocumentType:
+      type: string
+      enum: [UNDEFINED, INVOICE, ADVANCE_REQUEST, RECALL]
+    PageLayout:
+      type: object
+      properties:
+        layout: { type: string, maxLength: 50 }
+        singlePage: { type: boolean, default: false }
+    DocumentModelInput:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        type: { $ref: '#/components/schemas/DocumentType' }
+        title: { type: string, maxLength: 80 }
+        content: { type: string, description: HTML with placeholders }
+        addressCount: { type: integer, minimum: 0, default: 0 }
+        layouts: { type: array, maxItems: 4, items: { $ref: '#/components/schemas/PageLayout' } }
+    DocumentModel:
+      type: object
+      required: [id]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        type: { $ref: '#/components/schemas/DocumentType' }
+        title: { type: string }
+        content: { type: string }
+        addressCount: { type: integer }
+        layouts: { type: array, items: { $ref: '#/components/schemas/PageLayout' } }
+    Wording:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        text: { type: string }
+    WordingInput:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 80 }
+    InvoicingSettings:
+      type: object
+      required: [meetingHourlyRate, standardHourlyRate, vatRatePercent]
+      properties:
+        meetingHourlyRate: { type: number, minimum: 0 }
+        standardHourlyRate: { type: number, minimum: 0 }
+        invoiceDelayDays: { type: integer, minimum: 0, maximum: 127, default: 0 }
+        requestDelayDays: { type: integer, minimum: 0, maximum: 127, default: 0 }
+        vatNumber: { type: string, maxLength: 10 }
+        vatRatePercent: { $ref: '#/components/schemas/Percent' }
+    BookingSettings:
+      type: object
+      required: [vatRatePercent]
+      properties:
+        vatRatePercent:
+          allOf: [{ $ref: '#/components/schemas/Percent' }]
+          description: Net tax rate ("taux de la dette fiscale nette") applied to the money received, VAT included
+
+    # ----- booking --------------------------------------------------------------------------------------------------
+    PaymentKind:
+      type: string
+      enum: [UNDEFINED, BANK, EXPENSE, PERMANENT]
+      description: PERMANENT payments come from standing orders
+    OutgoingPaymentInput:
+      type: object
+      required: [kind, amount]
+      properties:
+        kind: { $ref: '#/components/schemas/PaymentKind' }
+        date: { type: string, format: date }
+        number: { type: string, maxLength: 20 }
+        creditor: { type: string, maxLength: 80 }
+        title: { type: string, maxLength: 80 }
+        ticketNumber: { type: string, maxLength: 80 }
+        amount: { type: number, description: Including VAT }
+        taxRatePercent: { $ref: '#/components/schemas/Percent' }
+        paidOn: { type: string, format: date }
+    OutgoingPayment:
+      type: object
+      required: [id]
+      properties:
+        id: { type: integer, format: int64 }
+        folderId: { type: integer, format: int64 }
+        kind: { $ref: '#/components/schemas/PaymentKind' }
+        date: { type: string, format: date }
+        number: { type: string }
+        creditor: { type: string }
+        title: { type: string }
+        ticketNumber: { type: string }
+        amount: { $ref: '#/components/schemas/Amount' }
+        taxRatePercent: { $ref: '#/components/schemas/Percent' }
+        tax: { $ref: '#/components/schemas/Amount' }
+        paid: { type: boolean }
+        paidOn: { type: string, format: date }
+        editable: { type: boolean, description: 'False for a payment produced by a standing order (it can only be deleted) or booked for a VAT payment (it follows the VAT payment)' }
+        vatPaymentId: { type: integer, format: int64, description: 'VAT payment this expense was booked for; absent for the other payments' }
+    StandingOrderInput:
+      type: object
+      required: [amount, dayOfMonth]
+      properties:
+        creditor: { type: string, maxLength: 80 }
+        title: { type: string, maxLength: 80 }
+        amount: { type: number }
+        taxRatePercent: { $ref: '#/components/schemas/Percent' }
+        dayOfMonth: { type: integer, minimum: 1, maximum: 31 }
+        enabled: { type: boolean, default: false }
+    StandingOrder:
+      type: object
+      required: [id]
+      properties:
+        id: { type: integer, format: int64 }
+        folderId: { type: integer, format: int64 }
+        creditor: { type: string }
+        title: { type: string }
+        amount: { $ref: '#/components/schemas/Amount' }
+        taxRatePercent: { $ref: '#/components/schemas/Percent' }
+        tax: { $ref: '#/components/schemas/Amount' }
+        dayOfMonth: { type: integer }
+        enabled: { type: boolean }
+    YearMonth:
+      type: string
+      pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+      example: '2026-10'
+    NextExecution:
+      type: object
+      properties:
+        month: { $ref: '#/components/schemas/YearMonth' }
+    ExecutionInput:
+      type: object
+      properties:
+        folderId: { type: integer, format: int64, description: Absent for the office books }
+        month: { $ref: '#/components/schemas/YearMonth' }
+
+    # ----- reports --------------------------------------------------------------------------------------------------
+    IncomeLine:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        date: { type: string, format: date }
+        folderId: { type: integer, format: int64 }
+        folderName: { type: string }
+        documentId: { type: integer, format: int64, description: 'Invoice id, or advance request id for an advance' }
+        amount: { $ref: '#/components/schemas/Amount' }
+        cash: { type: boolean }
+        ticketNumber: { type: string, description: Reference of the payment slip used }
+        iban: { type: string }
+    IncomeReport:
+      type: object
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        invoicePayments: { type: array, items: { $ref: '#/components/schemas/IncomeLine' } }
+        invoicePaymentsTotal: { $ref: '#/components/schemas/Amount' }
+        advances: { type: array, items: { $ref: '#/components/schemas/IncomeLine' } }
+        advancesTotal: { $ref: '#/components/schemas/Amount' }
+        total: { $ref: '#/components/schemas/Amount' }
+        vatRatePercent: { $ref: '#/components/schemas/Percent' }
+        vatDue: { description: Money received × net tax rate, allOf: [{ $ref: '#/components/schemas/Amount' }] }
+    VatPaymentInput:
+      type: object
+      required: [from, to, paidOn]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        paidOn: { type: string, format: date }
+        amount: { type: number, minimum: 0, description: What was paid; defaults to the VAT due according to the books }
+    VatPayment:
+      type: object
+      required: [id, from, to, revenue, vatRatePercent, vatDue, amount, paidOn]
+      properties:
+        id: { type: integer, format: int64 }
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        revenue: { description: Money received in the period at the time of payment, allOf: [{ $ref: '#/components/schemas/Amount' }] }
+        vatRatePercent: { $ref: '#/components/schemas/Percent' }
+        vatDue: { description: revenue × rate, allOf: [{ $ref: '#/components/schemas/Amount' }] }
+        amount: { description: What was paid, allOf: [{ $ref: '#/components/schemas/Amount' }] }
+        paidOn: { type: string, format: date }
+        expenseId: { type: integer, format: int64, description: 'Office expense booked for the payment; absent for payments recorded before expenses were booked' }
+    ExpenseLine:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        paidOn: { type: string, format: date }
+        kind: { $ref: '#/components/schemas/PaymentKind' }
+        creditor: { type: string }
+        title: { type: string }
+        amount: { $ref: '#/components/schemas/Amount' }
+        tax: { $ref: '#/components/schemas/Amount' }
+    ExpenseReport:
+      type: object
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        payments: { type: array, items: { $ref: '#/components/schemas/ExpenseLine' } }
+        total: { $ref: '#/components/schemas/Amount' }
+        taxTotal: { $ref: '#/components/schemas/Amount' }
+    Month:
+      type: string
+      enum: [JANUARY, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER, DECEMBER]
+    MonthFigures:
+      type: object
+      properties:
+        month: { $ref: '#/components/schemas/Month' }
+        advances: { $ref: '#/components/schemas/Amount' }
+        invoicePayments: { $ref: '#/components/schemas/Amount' }
+        incomes: { $ref: '#/components/schemas/Amount' }
+        expenses: { $ref: '#/components/schemas/Amount' }
+        balance: { $ref: '#/components/schemas/Amount' }
+    YearOverview:
+      type: object
+      properties:
+        year: { type: integer }
+        months: { type: array, items: { $ref: '#/components/schemas/MonthFigures' } }
+        incomes: { $ref: '#/components/schemas/Amount' }
+        expenses: { $ref: '#/components/schemas/Amount' }
+    UserStatistics:
+      type: object
+      properties:
+        username: { type: string }
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        folders: { type: array, items: { $ref: '#/components/schemas/FolderRef' } }
+        honorariesTotal: { $ref: '#/components/schemas/Amount' }
+        incomesTotal: { $ref: '#/components/schemas/Amount' }
+
+    # ----- users ----------------------------------------------------------------------------------------------------
+    Grant:
+      type: object
+      properties:
+        module: { type: string }
+        page: { type: string }
+    CreateUserInput:
+      type: object
+      required: [username, password, shortcut]
+      properties:
+        username: { type: string, minLength: 1, maxLength: 16 }
+        password: { type: string, minLength: 1, format: password }
+        firstName: { type: string, maxLength: 20 }
+        lastName: { type: string, maxLength: 30 }
+        shortcut: { type: string, minLength: 1, maxLength: 3 }
+    UpdateUserInput:
+      type: object
+      properties:
+        password: { type: string, format: password, description: 'New password, absent to keep the current one' }
+        firstName: { type: string, maxLength: 20 }
+        lastName: { type: string, maxLength: 30 }
+        shortcut: { type: string, maxLength: 3 }
+    UserSummary:
+      type: object
+      properties:
+        username: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        shortcut: { type: string }
+    User:
+      type: object
+      properties:
+        username: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        shortcut: { type: string }
+        grants: { type: array, items: { type: string }, description: 'Grants as module:page' }

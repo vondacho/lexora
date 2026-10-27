@@ -1,0 +1,32 @@
+# Local run on an H2 database created by Liquibase, with demo data:
+#   java -jar lexora-infrastructure/target/lexora.jar --spring.profiles.active=h2
+# Log in as demo / demo. The database is kept in ~/.lexora/h2 (LEXORA_H2_DIR); delete it to start afresh.
+spring:
+  datasource:
+    url: jdbc:h2:file:${LEXORA_H2_DIR:${user.home}/.lexora/h2}/lexora;MODE=MySQL;CASE_INSENSITIVE_IDENTIFIERS=TRUE;AUTO_SERVER=TRUE
+    username: sa
+    password: ""
+  liquibase:
+    # the production migrations, then the demo data
+    change-log: classpath:db/changelog-h2.yaml
+    enabled: true
+  jpa:
+    hibernate:
+      # check the entities against the schema built by Liquibase
+      ddl-auto: validate
+  h2:
+    console:
+      # http://localhost:8080/h2-console, JDBC URL as above, user sa, no password
+      enabled: true
+      path: /h2-console
+
+lexora:
+  documents:
+    qr-bill:
+      # sample QR-IBAN of the Swiss Implementation Guidelines, to see QR-bills locally
+      iban: CH44 3199 9123 0008 8901 2
+      creditor-name: Cabinet de démonstration
+      street: Rue de la Démo
+      house-number: "1"
+      postal-code: "2000"
+      town: Neuchâtel

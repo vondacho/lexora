@@ -3,7 +3,7 @@
 The schema is versioned with **Liquibase**, run by Spring Boot at startup before Hibernate.
 
 ```
-mabecoju-infrastructure/src/main/resources/db/changelog/
+lexora-infrastructure/src/main/resources/db/changelog/
 ├── db.changelog-master.yaml                  includes every change, in order
 └── changes/
     ├── 0001-legacy-schema.yaml               baseline: the schema inherited from the PHP application
@@ -40,7 +40,7 @@ the data is untouched, and a second run does nothing.
    tables) and for any later structural change.
 3. Start the application: the log shows the two change sets marked as run. Check with
    `SELECT id, exectype FROM DATABASECHANGELOG;`
-4. To start without migrating (e.g. a read-only user), set `MABECOJU_LIQUIBASE_ENABLED=false`.
+4. To start without migrating (e.g. a read-only user), set `LEXORA_LIQUIBASE_ENABLED=false`.
 
 ## Local H2 database
 

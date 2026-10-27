@@ -1,0 +1,29 @@
+<div class="head">
+  <div>
+    <h1>{{ tx().shell.nav.todo }}</h1>
+    <p class="muted date">
+      {{ todayText() }}
+      @if (pending(); as count) {
+        · {{ tx().home.pending(count) }}
+      } @else if (pending() === 0) {
+        · {{ tx().home.nothingPending }}
+      }
+    </p>
+  </div>
+</div>
+
+<div class="widgets">
+  @if (showDebtors) {
+    <lx-recall-widget [data]="overview()" />
+    <lx-bill-widget [data]="overview()" />
+  }
+  @if (showMonth) {
+    <lx-month-widget />
+  }
+  @if (showSearch) {
+    <lx-search-widget id="recherche" />
+  }
+  @if (!showDebtors && !showMonth && !showSearch) {
+    <p class="card muted">{{ tx().home.noWidget }}</p>
+  }
+</div>

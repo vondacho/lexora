@@ -1,15 +1,15 @@
-# mabecoju v2
+# Lexora
 
 Back office of the office: client folders, fees ("honoraires"), provision requests, invoices, payment follow-up and the
 office books. Rewrite of the PHP application `mabecoju-php` with Java / Spring Boot, on the **same MySQL database**.
-This repository holds the REST API and, in `mabecoju-frontend`, the Angular front end (in progress).
+This repository holds the REST API and, in `lexora-frontend`, the Angular front end (in progress).
 
 ## Architecture
 
 Hexagonal (ports and adapters), one Maven module per layer so that the compiler enforces the dependency direction:
 
 ```
-mabecoju-infrastructure  ──>  mabecoju-application  ──>  mabecoju-domain
+lexora-infrastructure  ──>  lexora-application  ──>  lexora-domain
  Spring Boot, JPA, REST,       use cases                  aggregates, value objects,
  security, configuration       (plain Java +              business rules, repository ports
                                jakarta @Transactional)    (plain Java)
@@ -17,25 +17,25 @@ mabecoju-infrastructure  ──>  mabecoju-application  ──>  mabecoju-domain
 
 | Module | Content |
 |---|---|
-| `mabecoju-domain` | Domain model by bounded area: `folder`, `customer`, `honorary`, `invoice`, `advance`, `ticket`, `billing`, `booking`, `template`, `settings`, `user`, `shared`. Repository interfaces (ports) live next to their aggregate. No framework. |
-| `mabecoju-application` | Use cases, one class per area (`InvoiceUseCases`, `DebtorUseCases`, `BookingUseCases`, ...), each public method being one use case. Read models for statements, overviews and reports. |
-| `mabecoju-frontend` | Angular 22 application (npm project, not a Maven module): see [its README](mabecoju-frontend/README.md). |
-| `mabecoju-infrastructure` | `persistence`: JPA entities on the legacy tables, Spring Data repositories, adapters implementing the domain ports. `web`: REST controllers implementing the API interfaces generated from the contract. `security`: HTTP Basic on `all_users`, grants as authorities. `config`: wiring of the use cases. |
+| `lexora-domain` | Domain model by bounded area: `folder`, `customer`, `honorary`, `invoice`, `advance`, `ticket`, `billing`, `booking`, `template`, `settings`, `user`, `shared`. Repository interfaces (ports) live next to their aggregate. No framework. |
+| `lexora-application` | Use cases, one class per area (`InvoiceUseCases`, `DebtorUseCases`, `BookingUseCases`, ...), each public method being one use case. Read models for statements, overviews and reports. |
+| `lexora-frontend` | Angular 22 application (npm project, not a Maven module): see [its README](lexora-frontend/README.md). |
+| `lexora-infrastructure` | `persistence`: JPA entities on the legacy tables, Spring Data repositories, adapters implementing the domain ports. `web`: REST controllers implementing the API interfaces generated from the contract. `security`: HTTP Basic on `all_users`, grants as authorities. `config`: wiring of the use cases. |
 
 ### API contract first
 
 The REST API is defined by the OpenAPI contract
-[`mabecoju-infrastructure/src/main/resources/static/openapi/mabecoju_openapi_v1.yaml`](mabecoju-infrastructure/src/main/resources/static/openapi/mabecoju_openapi_v1.yaml).
+[`lexora-infrastructure/src/main/resources/static/openapi/lexora_openapi_v1.yaml`](lexora-infrastructure/src/main/resources/static/openapi/lexora_openapi_v1.yaml).
 At build time, `openapi-generator-maven-plugin` (generator `spring`, Spring Boot 4 / Jackson 3) generates from it, into
 `target/generated-sources/openapi`:
 
-- one interface per tag in `ch.conciliations.mabecoju.infrastructure.web.api` (`FoldersApi`, `InvoicesApi`, ...) carrying
+- one interface per tag in `io.lexora.infrastructure.web.api` (`FoldersApi`, `InvoicesApi`, ...) carrying
   the Spring MVC mappings, status codes and bean validation of the contract;
 - the request and response models in `...web.api.model`, suffixed `Dto`.
 
 Each controller implements one generated interface, adds its `@PreAuthorize` grant and maps between the DTOs and the
 domain. To change the API: edit the contract, run `mvn compile`, and implement the new or changed methods (the compiler
-points at them). The same file is served at `/openapi/mabecoju_openapi_v1.yaml` and rendered by Scalar at `/scalar`.
+points at them). The same file is served at `/openapi/lexora_openapi_v1.yaml` and rendered by Scalar at `/scalar`.
 
 Errors are RFC 9457 problem details. Besides the English `detail` (for logs and developers), each one carries a stable
 `code` and its `params`, which clients translate, e.g.
@@ -85,19 +85,19 @@ followed by demo data. QR-bills use the sample QR-IBAN of the Swiss guidelines.
 | Office books | standing orders for the rent and the insurance with their payments of this month and the last, phone bills, office supplies, an unpaid membership fee |
 
 The dates are relative to the day the database is created: the cases are overdue and the current month has figures.
-Delete `~/.mabecoju/h2` to recreate the data with today's dates.
+Delete `~/.lexora/h2` to recreate the data with today's dates.
 
 ```bash
 mvn install -DskipTests                       # once, and after changes
-java -jar mabecoju-infrastructure/target/mabecoju.jar --spring.profiles.active=h2
-# or: mvn -pl mabecoju-infrastructure spring-boot:run -Dspring-boot.run.profiles=h2
+java -jar lexora-infrastructure/target/lexora.jar --spring.profiles.active=h2
+# or: mvn -pl lexora-infrastructure spring-boot:run -Dspring-boot.run.profiles=h2
 ```
 
 | | |
 |---|---|
 | API reference (try requests with `demo` / `demo`) | http://localhost:8080/scalar |
-| H2 console | http://localhost:8080/h2-console — JDBC URL `jdbc:h2:file:~/.mabecoju/h2/mabecoju;MODE=MySQL;CASE_INSENSITIVE_IDENTIFIERS=TRUE;AUTO_SERVER=TRUE`, user `sa`, no password |
-| Database files | `~/.mabecoju/h2` (`MABECOJU_H2_DIR`); delete the folder to start again from scratch |
+| H2 console | http://localhost:8080/h2-console — JDBC URL `jdbc:h2:file:~/.lexora/h2/lexora;MODE=MySQL;CASE_INSENSITIVE_IDENTIFIERS=TRUE;AUTO_SERVER=TRUE`, user `sa`, no password |
+| Database files | `~/.lexora/h2` (`LEXORA_H2_DIR`); delete the folder to start again from scratch |
 
 ```bash
 curl -u demo:demo http://localhost:8080/api/folders
@@ -105,10 +105,10 @@ curl -u demo:demo http://localhost:8080/api/folders/1/invoice-draft
 ```
 
 With the API running, start the front end and log in as `demo` / `demo` at http://localhost:4200
-(see [mabecoju-frontend/README.md](mabecoju-frontend/README.md)):
+(see [lexora-frontend/README.md](lexora-frontend/README.md)):
 
 ```bash
-cd mabecoju-frontend && npm install && npm start
+cd lexora-frontend && npm install && npm start
 ```
 
 To try the bank import ("Encaissements"), write a sample camt.054 file paying the open documents of the running API:
@@ -117,22 +117,22 @@ To try the bank import ("Encaissements"), write a sample camt.054 file paying th
 ## Run on MySQL
 
 ```bash
-export MABECOJU_DB_HOST=127.0.0.1 MABECOJU_DB_NAME=mabecoju MABECOJU_DB_USER=... MABECOJU_DB_PASSWORD=...
-java -jar mabecoju-infrastructure/target/mabecoju.jar
+export LEXORA_DB_HOST=127.0.0.1 LEXORA_DB_NAME=lexora LEXORA_DB_USER=... LEXORA_DB_PASSWORD=...
+java -jar lexora-infrastructure/target/lexora.jar
 ```
 
 | Variable / property | Default | |
 |---|---|---|
-| `MABECOJU_DB_HOST`, `MABECOJU_DB_PORT`, `MABECOJU_DB_NAME` | `127.0.0.1`, `3306`, `mabecoju` | MySQL database of the PHP application |
-| `MABECOJU_DB_USER`, `MABECOJU_DB_PASSWORD` | `mabecoju`, empty | |
-| `mabecoju.security.legacy-password-hashing` | `true` | Keep MD5 for new passwords while the PHP application is in use. Set to `false` afterwards: new passwords use bcrypt and MD5 hashes are upgraded at login. |
-| `mabecoju.security.allowed-origins` | `http://localhost:4200` | CORS origins of the Angular front end |
-| `MABECOJU_LIQUIBASE_ENABLED` | `true` | Run the database migrations at startup |
-| `MABECOJU_QR_BILL_IBAN`, `..._CREDITOR_NAME`, `..._STREET`, `..._HOUSE_NUMBER`, `..._POSTAL_CODE`, `..._TOWN` | empty | Creditor of the QR-bills; no QR-bill while the IBAN is empty. See [documents](docs/documents.md). |
-| `MABECOJU_DOCUMENTS_FONT_FILE` | empty | TrueType font embedded in the documents (Helvetica otherwise) |
-| `mabecoju.time-zone` | `Europe/Zurich` | Defines "today" for due dates and default dates |
+| `LEXORA_DB_HOST`, `LEXORA_DB_PORT`, `LEXORA_DB_NAME` | `127.0.0.1`, `3306`, `lexora` | MySQL database of the PHP application |
+| `LEXORA_DB_USER`, `LEXORA_DB_PASSWORD` | `lexora`, empty | |
+| `lexora.security.legacy-password-hashing` | `true` | Keep MD5 for new passwords while the PHP application is in use. Set to `false` afterwards: new passwords use bcrypt and MD5 hashes are upgraded at login. |
+| `lexora.security.allowed-origins` | `http://localhost:4200` | CORS origins of the Angular front end |
+| `LEXORA_LIQUIBASE_ENABLED` | `true` | Run the database migrations at startup |
+| `LEXORA_QR_BILL_IBAN`, `..._CREDITOR_NAME`, `..._STREET`, `..._HOUSE_NUMBER`, `..._POSTAL_CODE`, `..._TOWN` | empty | Creditor of the QR-bills; no QR-bill while the IBAN is empty. See [documents](docs/documents.md). |
+| `LEXORA_DOCUMENTS_FONT_FILE` | empty | TrueType font embedded in the documents (Helvetica otherwise) |
+| `lexora.time-zone` | `Europe/Zurich` | Defines "today" for due dates and default dates |
 
-- API reference: `http://localhost:8080/scalar`, rendered by Scalar from the contract served at `/openapi/mabecoju_openapi_v1.yaml`
+- API reference: `http://localhost:8080/scalar`, rendered by Scalar from the contract served at `/openapi/lexora_openapi_v1.yaml`
   (usable to generate the Angular client). Both are public.
 - Health: `/actuator/health`.
 - Every `/api/**` call needs HTTP Basic credentials of an `all_users` account; each endpoint requires the same page grant as
@@ -148,7 +148,7 @@ curl -u user:password http://localhost:8080/api/debtors/overview
 ## Before production
 
 1. Compare the production schema (`SHOW CREATE TABLE`) with the baseline
-   [`0001-legacy-schema-mysql.sql`](mabecoju-infrastructure/src/main/resources/db/changelog/changes/sql/0001-legacy-schema-mysql.sql), and read
+   [`0001-legacy-schema-mysql.sql`](lexora-infrastructure/src/main/resources/db/changelog/changes/sql/0001-legacy-schema-mysql.sql), and read
    [what happens at the first start](docs/database-migrations.md#first-start-on-the-production-database).
 2. Consider converting the tables from MyISAM to InnoDB: without it, multi-table operations are not atomic.
 3. Answer the [open questions](docs/legacy-behaviour.md#open-questions).

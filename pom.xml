@@ -11,17 +11,17 @@
         <relativePath/>
     </parent>
 
-    <groupId>ch.conciliations</groupId>
-    <artifactId>mabecoju-v2</artifactId>
+    <groupId>io.lexora</groupId>
+    <artifactId>lexora</artifactId>
     <version>2.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>mabecoju v2</name>
-    <description>Invoicing and booking back office (rewrite of the mabecoju PHP application)</description>
+    <name>Lexora</name>
+    <description>Invoicing and booking back office (rewrite of the lexora PHP application)</description>
 
     <modules>
-        <module>mabecoju-domain</module>
-        <module>mabecoju-application</module>
-        <module>mabecoju-infrastructure</module>
+        <module>lexora-domain</module>
+        <module>lexora-application</module>
+        <module>lexora-infrastructure</module>
     </modules>
 
     <properties>
@@ -38,13 +38,13 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>ch.conciliations</groupId>
-                <artifactId>mabecoju-domain</artifactId>
+                <groupId>io.lexora</groupId>
+                <artifactId>lexora-domain</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>ch.conciliations</groupId>
-                <artifactId>mabecoju-application</artifactId>
+                <groupId>io.lexora</groupId>
+                <artifactId>lexora-application</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

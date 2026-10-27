@@ -54,18 +54,18 @@ carry `RF` references. Ask the bank for a QR-IBAN to get QR references instead.
 ## Configuration
 
 ```yaml
-mabecoju:
+lexora:
   documents:
     city: Neuchâtel                       # "Neuchâtel, le 24 octobre 2026"
     signature: Marna Müller-Bessi
     header-image: classpath:documents/header.png
     footer-image: classpath:documents/footer.png
-    font-file: /path/to/GOTHIC.TTF        # MABECOJU_DOCUMENTS_FONT_FILE; Helvetica when empty
+    font-file: /path/to/GOTHIC.TTF        # LEXORA_DOCUMENTS_FONT_FILE; Helvetica when empty
     font-family: Century Gothic
     qr-bill:
-      iban: ...                           # MABECOJU_QR_BILL_IBAN; no QR-bill when empty
-      creditor-name: ...                  # MABECOJU_QR_BILL_CREDITOR_NAME
-      street: ...                         # MABECOJU_QR_BILL_STREET, _HOUSE_NUMBER, _POSTAL_CODE, _TOWN
+      iban: ...                           # LEXORA_QR_BILL_IBAN; no QR-bill when empty
+      creditor-name: ...                  # LEXORA_QR_BILL_CREDITOR_NAME
+      street: ...                         # LEXORA_QR_BILL_STREET, _HOUSE_NUMBER, _POSTAL_CODE, _TOWN
 ```
 
 Century Gothic (`GOTHIC.TTF` of the PHP server) is a licensed Monotype font: it is not part of the repository.

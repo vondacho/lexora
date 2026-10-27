@@ -1,6 +1,6 @@
 # Domain model
 
-The domain layer (`mabecoju-domain`, package `ch.conciliations.mabecoju.domain`) is plain Java: no Spring, no JPA.
+The domain layer (`lexora-domain`, package `io.lexora.domain`) is plain Java: no Spring, no JPA.
 Each aggregate references the others by typed identifier only (`FolderId`, `CustomerId`, `InvoiceId`, ...), the same way the
 legacy tables reference each other by id without foreign keys.
 

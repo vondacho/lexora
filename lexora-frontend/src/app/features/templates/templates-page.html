@@ -1,0 +1,190 @@
+<div class="head">
+  <div>
+    <h1>{{ tx().templates.title }}</h1>
+    <p class="muted sub">{{ tx().templates.sub }}</p>
+  </div>
+  @if (canEdit) {
+    <button type="button" class="btn btn-primary" (click)="newTemplate()">{{ tx().templates.newTemplate }}</button>
+  }
+</div>
+
+@if (flash(); as message) {
+  <p class="flash" role="status">{{ message }}</p>
+}
+@if (pending() !== null) {
+  <div class="pending" role="alert">
+    <span>{{ tx().templates.unsavedOf(draft()?.name ?? '') }}</span>
+    <button type="button" class="btn btn-small" (click)="pending.set(null)">{{ tx().templates.keepEditing }}</button>
+    <button type="button" class="btn btn-small btn-warn" (click)="discardAndOpen()">{{ tx().templates.discard }}</button>
+  </div>
+}
+
+@switch (state()) {
+  @case ('loading') {
+    <p class="muted">{{ tx().templates.loading }}</p>
+  }
+  @case ('error') {
+    <p class="problem">{{ tx().templates.failed }}</p>
+  }
+  @case ('ready') {
+    <div class="layout">
+      <nav class="card list" [attr.aria-label]="tx().templates.list">
+        @for (g of groups(); track g.type) {
+          <div class="group">
+            <div class="group-label">{{ g.label }}</div>
+            @for (m of g.items; track m.id) {
+              <button type="button" class="item" [class.current]="selected() === m.id" [attr.aria-current]="selected() === m.id ? 'true' : null" (click)="select(m.id)">
+                <span class="item-name">{{ m.name }}</span>
+                <span class="muted small">{{ tx().templates.clients(m.addressCount ?? 1) }}</span>
+              </button>
+            }
+          </div>
+        } @empty {
+          <p class="muted">{{ tx().templates.none }}</p>
+        }
+        @if (selected() === 'new') {
+          <div class="group"><div class="item current"><span class="item-name">{{ tx().templates.new }}</span></div></div>
+        }
+      </nav>
+
+      @if (draft(); as d) {
+        <section #editorSection class="card editor" aria-labelledby="ed-title">
+          <h2 id="ed-title">
+            {{ selected() === 'new' ? tx().templates.new : tx().templates.editName(original()?.name ?? '') }}
+            @if (dirty()) {
+              <span class="unsaved">{{ tx().templates.unsaved }}</span>
+            }
+          </h2>
+          <fieldset class="form" [disabled]="!canEdit">
+            <div class="row2">
+              <div class="field"><label for="m-name">{{ tx().templates.name }}</label><input id="m-name" class="input" maxlength="80" [ngModel]="d.name" (ngModelChange)="update('name', $event)" /></div>
+              <div class="field"><label for="m-title">{{ tx().templates.printedTitle }}</label><input id="m-title" class="input" maxlength="80" [ngModel]="d.title" (ngModelChange)="update('title', $event)" /></div>
+              <div class="field">
+                <label for="m-type">{{ tx().templates.usedFor }}</label>
+                <select id="m-type" class="input" [ngModel]="d.type" (ngModelChange)="changeType($event)">
+                  @for (t of types; track t) {
+                    <option [value]="t">{{ typeLabel(t) }}</option>
+                  }
+                </select>
+              </div>
+              <div class="field">
+                <label for="m-adr">{{ tx().templates.recipients }}</label>
+                <select id="m-adr" class="input" [ngModel]="d.addressCount" (ngModelChange)="update('addressCount', +$event)">
+                  <option [ngValue]="1">{{ tx().templates.clients(1) }}</option>
+                  <option [ngValue]="2">{{ tx().templates.clients(2) }}</option>
+                  <option [ngValue]="3">{{ tx().templates.clients(3) }}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="pages">
+              <span class="label">{{ tx().templates.pages }}</span>
+              @for (p of d.pages; track $index; let i = $index) {
+                <div class="page-row">
+                  <span class="muted small">{{ tx().templates.page(i + 1) }}</span>
+                  <select class="input" [attr.aria-label]="tx().templates.page(i + 1)" [ngModel]="p" (ngModelChange)="setPage(i, $event)">
+                    <option value="letter">{{ tx().templates.letter }}</option>
+                    <option value="detail" [disabled]="d.type !== 'INVOICE'">{{ tx().templates.detail(d.type !== 'INVOICE') }}</option>
+                    @if (d.pages.length > 1) {
+                      <option value="none">{{ tx().templates.removePage }}</option>
+                    }
+                  </select>
+                </div>
+              }
+              @if (d.pages.length < 4) {
+                <button type="button" class="link small" (click)="addPage()">{{ tx().templates.addPage }}</button>
+              }
+              <span class="muted small">{{ tx().templates.slipNote }}</span>
+            </div>
+
+            <div class="text-head">
+              <span class="label" id="m-content-label">{{ tx().templates.text }}</span>
+              <span class="muted small">{{ tx().templates.clickToInsert }}</span>
+            </div>
+            <div class="chips" role="group" [attr.aria-label]="tx().templates.fieldsAvailable">
+              @for (f of fields(); track f.token) {
+                <button type="button" class="chip" [title]="f.token + ' — ' + f.help" (mousedown)="$event.preventDefault()" (click)="insert(f.token)">{{ f.label }}</button>
+              }
+            </div>
+            @if (d.format === 'html') {
+              <lx-rich-editor [content]="d.content" labelledBy="m-content-label" (contentChange)="update('content', $event)" />
+            } @else {
+              <textarea #plainText id="m-content" class="input plain" rows="14" aria-labelledby="m-content-label" [ngModel]="d.content" (ngModelChange)="update('content', $event)"></textarea>
+              <div class="convert">
+                <span class="muted small">{{ tx().templates.plainNote }}</span>
+                <button type="button" class="btn btn-small" (click)="convert()">{{ confirmConvert() ? tx().templates.confirmConvert : tx().templates.convert }}</button>
+              </div>
+            }
+          </fieldset>
+          @if (unknown().length) {
+            <p class="problem" role="alert">{{ tx().templates.unknown(unknown().join(', ')) }}</p>
+          }
+          @if (noAmount()) {
+            <p class="warning">{{ tx().templates.noAmount }}</p>
+          }
+          @if (error(); as message) {
+            <p class="problem" role="alert">{{ message }}</p>
+          }
+          @if (canEdit) {
+            <div class="actions">
+              <button type="button" class="btn btn-primary" [disabled]="busy() || !d.name.trim() || (!dirty() && selected() !== 'new')" (click)="save()">
+                {{ busy() ? tx().common.saving : selected() === 'new' ? tx().templates.create : tx().common.save }}
+              </button>
+              @if (original()) {
+                <button type="button" class="btn" [disabled]="busy()" (click)="duplicate()">{{ tx().templates.duplicate }}</button>
+                <button type="button" class="btn btn-warn" [disabled]="busy()" (click)="remove()">{{ confirmDelete() ? tx().templates.confirmDelete : tx().common.delete }}</button>
+              }
+            </div>
+          } @else {
+            <p class="muted small">{{ tx().templates.readOnly }}</p>
+          }
+        </section>
+
+        <section class="card preview" aria-labelledby="pv-title">
+          <div class="preview-head">
+            <h2 id="pv-title">{{ tx().templates.preview }}</h2>
+            <div class="copies" role="group" [attr.aria-label]="tx().templates.copy">
+              <button type="button" class="chip" [class.on]="copy() === 0" [attr.aria-pressed]="copy() === 0" (click)="copy.set(0)">Anne</button>
+              <button type="button" class="chip" [class.on]="copy() === 1" [attr.aria-pressed]="copy() === 1" (click)="copy.set(1)">Paul</button>
+            </div>
+          </div>
+          <p class="muted small">{{ tx().templates.example }}</p>
+          @if (preview(); as p) {
+            @for (page of d.pages; track $index) {
+              @if (page === 'letter') {
+                <article class="sheet" [attr.aria-label]="tx().templates.letterPage">
+                  <div class="sheet-top">
+                    <div class="brand">lexora <span class="muted">juriste &amp; médiatrice</span></div>
+                    <div class="address">
+                      <div>{{ p.values['title_1'] }}</div>
+                      <div>{{ p.values['firstName_1'] }} {{ p.values['lastName_1'] }}</div>
+                      <div>{{ p.values['streetNo_1'] }}</div>
+                      <div>{{ p.values['zip_1'] }} {{ p.values['city_1'] }}</div>
+                    </div>
+                  </div>
+                  <div class="date-line">Neuchâtel, le {{ p.values['date'] }} · réf. {{ p.values['refNo'] }}</div>
+                  @if (d.title) {
+                    <div class="title">{{ d.title }}</div>
+                  }
+                  <div class="body" [class.plain-body]="!p.html" [innerHTML]="p.body"></div>
+                  <div class="signature">{{ p.values['issuerName'] }}</div>
+                </article>
+              } @else {
+                <article class="sheet detail" [attr.aria-label]="tx().templates.detailPage">
+                  <div class="title">Décompte détaillé · F-{{ p.values['refNo'] }}</div>
+                  <div class="line"><span>3 séances · 4 h 30</span><span class="mono">912.50</span></div>
+                  <div class="line"><span>TVA 8.1 %</span><span class="mono">73.90</span></div>
+                  <div class="line"><span>Provisions déduites</span><span class="mono">− 600.00</span></div>
+                  <div class="line total"><span>Solde</span><span class="mono">386.40</span></div>
+                </article>
+              }
+            }
+            <p class="muted small">{{ tx().templates.slipAfter(p.values['amount_1'], p.values['firstName_1'] + ' ' + p.values['lastName_1']) }}</p>
+          }
+        </section>
+      } @else {
+        <p class="muted">{{ tx().templates.choose }}</p>
+      }
+    </div>
+  }
+}

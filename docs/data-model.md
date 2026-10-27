@@ -1,13 +1,13 @@
 # Data model
 
-mabecoju v2 keeps the legacy MySQL database **unchanged** and shares it with the PHP application.
-Every one of the 24 tables is mapped by a JPA entity (`mabecoju-infrastructure`, package
-`ch.conciliations.mabecoju.infrastructure.persistence`) with its exact table and column names. Hibernate never changes the
+Lexora keeps the legacy MySQL database **unchanged** and shares it with the PHP application.
+Every one of the 24 tables is mapped by a JPA entity (`lexora-infrastructure`, package
+`io.lexora.infrastructure.persistence`) with its exact table and column names. Hibernate never changes the
 schema (`ddl-auto: none`): Liquibase owns it (see [database migrations](database-migrations.md)). The tests build an H2
 database with the same changelog and validate all mappings against it (`ddl-auto: validate`).
 
 The legacy MySQL schema is the baseline of the changelog:
-[`0001-legacy-schema-mysql.sql`](../mabecoju-infrastructure/src/main/resources/db/changelog/changes/sql/0001-legacy-schema-mysql.sql),
+[`0001-legacy-schema-mysql.sql`](../lexora-infrastructure/src/main/resources/db/changelog/changes/sql/0001-legacy-schema-mysql.sql),
 completed by change set `0002` (columns added in 2024).
 
 ```mermaid

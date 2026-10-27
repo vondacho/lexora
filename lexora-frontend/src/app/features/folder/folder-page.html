@@ -1,0 +1,145 @@
+<a routerLink="/a-traiter" class="back">{{ tx().common.backToTodo }}</a>
+@switch (state().state) {
+  @case ('loading') {
+    <p class="muted">{{ tx().folder.page.loading }}</p>
+  }
+  @case ('missing') {
+    <h1>{{ tx().folder.page.missing }}</h1>
+    <p class="muted">{{ tx().folder.page.missingText(id()) }}</p>
+  }
+  @case ('error') {
+    <p class="problem">{{ tx().folder.page.failed }}</p>
+  }
+  @case ('ready') {
+    @if (data(); as d) {
+      <div class="head">
+        <div>
+          <div class="title">
+            <h1>{{ d.folder.name }}</h1>
+            <span class="mono muted">#{{ d.folder.number ?? d.folder.id }}</span>
+            <span class="pill">{{ d.folder.type === 'TUTELAGE' ? tx().common.tutelage : tx().common.invoicing }}</span>
+            @if (d.folder.status) {
+              <span class="pill neutral">{{ d.folder.status }}</span>
+            }
+            @if (refreshing()) {
+              <span class="muted small" role="status">{{ tx().folder.page.refreshing }}</span>
+            }
+          </div>
+          <p class="muted meta">
+            {{ tx().folder.page.opened(d.folder.openingDate | swissDate) }}
+            @if (d.folder.handledBy) {
+              · {{ tx().common.handledBy(d.folder.handledBy) }}
+            }
+            @if (d.folder.firstDate) {
+              · {{ tx().folder.page.firstSession(d.folder.firstDate | swissDate) }}
+            }
+          </p>
+        </div>
+        <div class="buttons">
+          @if (can.folder) {
+            <button type="button" class="btn" [class.on]="panel() === 'folder'" (click)="open('folder')">{{ tx().folder.page.edit }}</button>
+          }
+          @if (can.session) {
+            <button type="button" class="btn" (click)="addSession()">{{ tx().folder.page.addSession }}</button>
+          }
+          @if (can.request) {
+            <button type="button" class="btn" [class.on]="panel() === 'request'" (click)="open('request')">{{ tx().folder.page.addRequest }}</button>
+          }
+          @if (can.payment) {
+            <button type="button" class="btn" [class.on]="panel() === 'payment'" (click)="open('payment')">{{ tx().folder.page.addPayment }}</button>
+          }
+          @if (can.invoice) {
+            <button type="button" class="btn btn-primary" (click)="open('invoice')">{{ tx().folder.page.invoice }}</button>
+          }
+        </div>
+      </div>
+
+      @if (figures(); as f) {
+        <div class="tiles">
+          <div class="tile">
+            <span class="label">{{ tx().folder.page.toInvoice }}</span>
+            <span class="value">{{ f.toInvoice | chf }}</span>
+            <span class="note">{{ tx().folder.page.openSessions(f.openSessions) }}</span>
+          </div>
+          <div class="tile">
+            <span class="label">{{ tx().folder.page.available }}</span>
+            <span class="value">{{ f.available | chf }}</span>
+            <span class="note">{{ tx().folder.page.availableNote }}</span>
+          </div>
+          <div class="tile">
+            <span class="label">{{ tx().folder.page.uncovered }}</span>
+            <span class="value accent">{{ f.uncovered | chf }}</span>
+            <span class="note">{{ tx().folder.page.uncoveredNote }}</span>
+          </div>
+          <div class="tile">
+            <span class="label">{{ tx().folder.page.due }}</span>
+            <span class="value" [class.warn]="f.dueTotal > 0">{{ f.dueTotal | chf }}</span>
+            <span class="note">{{ f.dueTotal > 0 ? tx().folder.page.dueOpen : tx().folder.page.dueNone }}</span>
+          </div>
+        </div>
+      }
+
+      @if (notice(); as message) {
+        <p class="notice" role="status">{{ message }}</p>
+      }
+
+      <div class="layout">
+        <lx-timeline
+          [folderId]="d.folder.id"
+          [items]="items()"
+          [selectedKey]="selectedKey()"
+          [canRecord]="can.session"
+          (selectItem)="select($event)"
+        />
+        <aside #side class="side" [attr.aria-label]="tx().folder.page.side">
+          @switch (panel()) {
+            @case ('invoice') {
+              <lx-invoice-composer
+                [folderId]="d.folder.id"
+                (issued)="afterChange('f' + $event, tx().folder.page.invoiceIssued)"
+                (cancelled)="panel.set(null)"
+              />
+            }
+            @case ('request') {
+              <lx-request-composer
+                [folderId]="d.folder.id"
+                (created)="afterChange('p' + $event, tx().folder.page.requestCreated)"
+                (cancelled)="panel.set(null)"
+              />
+            }
+            @case ('payment') {
+              @if (figures(); as f) {
+                <lx-payment-composer
+                  [folderId]="d.folder.id"
+                  [dues]="f.dues"
+                  (recorded)="afterChange(null, tx().folder.page.paymentRecorded)"
+                  (changed)="reloadOnly()"
+                  (cancelled)="panel.set(null)"
+                />
+              }
+            }
+            @case ('folder') {
+              <lx-folder-editor [folder]="d.folder" [canDelete]="can.folder" (saved)="afterChange(null, tx().folder.page.folderSaved)" (deleted)="folderDeleted()" (closed)="panel.set(null)" />
+            }
+            @case ('customer') {
+              <lx-customer-editor
+                [folderId]="d.folder.id"
+                [customer]="editedCustomer()"
+                [canCreate]="can.customerCreate"
+                [canModify]="can.customerModify"
+                (saved)="afterChange(null, $event)"
+                (closed)="panel.set(null)"
+              />
+            }
+          }
+          @if (!panel() && selected(); as item) {
+            <lx-item-detail [data]="d" [item]="item" (changed)="afterChange($event)" (closed)="selectedKey.set(null)" />
+          }
+          @if (figures(); as f) {
+            <lx-customers-panel [dues]="f.dues" [canAdd]="can.customerCreate" [canEdit]="can.customerModify" (add)="editCustomer(null)" (edit)="editCustomer($event)" />
+          }
+        </aside>
+      </div>
+    }
+  }
+}

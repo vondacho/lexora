@@ -1,10 +1,10 @@
 # Use cases
 
-Use cases discovered in the PHP application (`mabecoju-php`), with where they now live in mabecoju v2.
+Use cases discovered in the PHP application (`mabecoju-php`), with where they now live in Lexora.
 
 - **Legacy** — the PHP page or action implementing it (`presentation/<module>/...`).
-- **Use case** — the method of the application layer (`mabecoju-application`, package `ch.conciliations.mabecoju.application`).
-- **Endpoint** — the REST resource exposing it, as defined in the OpenAPI contract (`static/openapi/mabecoju_openapi_v1.yaml`). All endpoints are under `/api` and need HTTP Basic authentication.
+- **Use case** — the method of the application layer (`lexora-application`, package `io.lexora.application`).
+- **Endpoint** — the REST resource exposing it, as defined in the OpenAPI contract (`static/openapi/lexora_openapi_v1.yaml`). All endpoints are under `/api` and need HTTP Basic authentication.
 - **Grant** — the legacy page grant (`all_grants`) required, as `module:page`.
 
 The legacy application has three modules: **invoicing** (folders and what customers owe), **booking** (the office books) and **admin** (users).

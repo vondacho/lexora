@@ -1,6 +1,6 @@
 # Differences with the PHP application
 
-mabecoju v2 reproduces the business behaviour of the PHP application. This page lists where it deliberately differs,
+Lexora reproduces the business behaviour of the PHP application. This page lists where it deliberately differs,
 the PHP defects found while reading the code, and the questions left open.
 
 ## Deliberate changes
