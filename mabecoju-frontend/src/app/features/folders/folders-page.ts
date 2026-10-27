@@ -7,6 +7,7 @@ import { AuthService } from '../../core/auth.service';
 import { SwissDatePipe } from '../../shared/format';
 import { todayIso } from '../../shared/money';
 import { problemMessage } from '../../shared/problem';
+import { texts } from '../../i18n/i18n';
 import { cleaned, CustomerFields, FolderFields, hasName } from './folder-fields';
 import { distinct, FolderFilter, filterFolders, page, Sort, sortFolders } from './folders.model';
 
@@ -25,6 +26,7 @@ export class FoldersPage {
   private readonly auth = inject(AuthService);
   protected readonly canCreate = this.auth.hasGrant('invoicing:folder_create');
 
+  protected readonly tx = texts;
   protected readonly state = signal<'loading' | 'ready' | 'error'>('loading');
   protected readonly all = signal<Folder[]>([]);
   protected readonly statuses = signal<string[]>([]);
@@ -77,7 +79,7 @@ export class FoldersPage {
   protected async create(): Promise<void> {
     if (this.busy()) return;
     if (!this.folder.name?.trim()) {
-      this.error.set('Indiquez le nom du dossier.');
+      this.error.set(texts().folders.nameMissing);
       return;
     }
     this.busy.set(true);
@@ -90,7 +92,7 @@ export class FoldersPage {
       );
       void this.router.navigate(['/dossiers', opened.folder?.id]);
     } catch (e: unknown) {
-      this.error.set(problemMessage(e, 'Le dossier n’a pas pu être ouvert.'));
+      this.error.set(problemMessage(e, texts().folders.openFailed));
     } finally {
       this.busy.set(false);
     }

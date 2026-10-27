@@ -22,6 +22,7 @@ import { ChfPipe, formatDate } from '../../shared/format';
 import { todayIso } from '../../shared/money';
 import { blobProblemMessage, problemMessage } from '../../shared/problem';
 import { latestRecall } from '../../shared/recalls';
+import { texts } from '../../i18n/i18n';
 import { debtsToRecall, DebtToRecall, loadable, Loadable } from '../home/home.model';
 import {
   fillTemplate,
@@ -47,14 +48,14 @@ interface Done {
 }
 
 const CHIPS = [
-  { label: 'civilité', token: '$title_1' },
-  { label: 'prénom', token: '$firstName_1' },
-  { label: 'nom', token: '$lastName_1' },
-  { label: 'montant dû', token: '$amount_1' },
-  { label: 'n° du document', token: '$refNo' },
-  { label: 'date de l’envoi', token: '$invoiceDate' },
-  { label: 'dernier rappel', token: '$lastRecallDate' },
-];
+  { key: 'title', token: '$title_1' },
+  { key: 'firstName', token: '$firstName_1' },
+  { key: 'lastName', token: '$lastName_1' },
+  { key: 'amount', token: '$amount_1' },
+  { key: 'refNo', token: '$refNo' },
+  { key: 'invoiceDate', token: '$invoiceDate' },
+  { key: 'lastRecall', token: '$lastRecallDate' },
+] as const;
 
 /** "Débiteurs & rappels": pick an overdue document, adjust the letter, create the reminder and print it. */
 @Component({
@@ -75,6 +76,7 @@ export class DebtorsPage {
   private readonly textArea = viewChild<ElementRef<HTMLTextAreaElement>>('letterText');
   private readonly letterSection = viewChild<ElementRef<HTMLElement>>('letterSection');
 
+  protected readonly tx = texts;
   protected readonly chips = CHIPS;
   protected readonly today = todayIso();
   protected readonly issuer = this.auth.user;
@@ -234,16 +236,11 @@ export class DebtorsPage {
     });
   }
 
-  protected recallText(debt: DebtToRecall): string {
-    const n = debt.recallCount;
-    return n === 0 ? 'aucun rappel' : n === 1 ? '1 rappel' : `${n} rappels`;
-  }
-
   protected previousRecalls(): string {
     const recalls = this.letter()?.recalled.doc.recalls ?? [];
     return recalls.length
-      ? [...recalls].sort((a, b) => (a.degree ?? 0) - (b.degree ?? 0)).map((r) => `n° ${r.degree} le ${formatDate(r.date)}`).join(', ')
-      : 'aucun';
+      ? [...recalls].sort((a, b) => (a.degree ?? 0) - (b.degree ?? 0)).map((r) => texts().debtors.previousItem(r.degree, formatDate(r.date))).join(', ')
+      : texts().debtors.none;
   }
 
   /** Creates the reminder for what is still due, then opens its PDF. */
@@ -265,12 +262,12 @@ export class DebtorsPage {
       recallId = latestRecall(updated.recalls)?.id;
     } catch (e: unknown) {
       this.busy.set(false);
-      this.error.set(problemMessage(e, 'Le rappel n’a pas pu être créé.'));
+      this.error.set(problemMessage(e, texts().debtors.createFailed));
       return;
     }
     const degree = this.nextDegree();
     this.sent.update((s) => new Set(s).add(debt.reference));
-    const printFailed = recallId === undefined ? 'Le rappel est enregistré mais introuvable pour l’impression.' : await this.print(debt, recallId);
+    const printFailed = recallId === undefined ? texts().debtors.notFound : await this.print(debt, recallId);
     this.done.set({ reference: debt.reference, degree, printFailed });
     this.busy.set(false);
     this.letterVersion.update((v) => v + 1);
@@ -306,7 +303,7 @@ export class DebtorsPage {
   private async print(debt: DebtToRecall, recallId: number): Promise<string | null> {
     const model = this.model();
     if (!model || !this.canPrint(debt)) {
-      return 'Vos droits ne permettent pas d’imprimer ce rappel.';
+      return texts().debtors.noPrintRight;
     }
     const edited = this.editedText();
     const printInput = {
@@ -325,7 +322,7 @@ export class DebtorsPage {
       openPdf(pdf, `${folder}_${debt.reference}_rappel.pdf`);
       return null;
     } catch (e: unknown) {
-      return blobProblemMessage(e, 'Le PDF n’a pas pu être produit.');
+      return blobProblemMessage(e, texts().common.pdfFailed);
     }
   }
 

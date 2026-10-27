@@ -1,45 +1,45 @@
-<a routerLink="/a-traiter" class="back">← À traiter</a>
-<h1>Débiteurs &amp; rappels</h1>
-<p class="muted intro">Choisissez un impayé, ajustez la lettre, imprimez : le rappel est enregistré avec le montant encore dû.</p>
+<a routerLink="/a-traiter" class="back">{{ tx().common.backToTodo }}</a>
+<h1>{{ tx().shell.nav.debtors }}</h1>
+<p class="muted intro">{{ tx().debtors.intro }}</p>
 
 @if (done(); as d) {
   <div class="done" role="status">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>
     <span class="done-text">
-      <strong>Rappel n° {{ d.degree }} pour {{ d.reference }} enregistré.</strong>
+      <strong>{{ tx().debtors.done(d.degree, d.reference) }}</strong>
       @if (d.printFailed) {
         <span class="warn"> {{ d.printFailed }}</span>
       } @else {
-        Le PDF s’est ouvert dans un nouvel onglet.
+        {{ tx().debtors.pdfOpened }}
       }
     </span>
     @if (d.printFailed) {
-      <button type="button" class="btn btn-small" [disabled]="busy()" (click)="reprint()">Réessayer l’impression</button>
+      <button type="button" class="btn btn-small" [disabled]="busy()" (click)="reprint()">{{ tx().debtors.retryPrint }}</button>
     }
     @if (nextDebt(); as next) {
-      <button type="button" class="btn btn-small" (click)="goNext()">Impayé suivant : {{ next.reference }} · {{ next.folderName }}</button>
+      <button type="button" class="btn btn-small" (click)="goNext()">{{ tx().debtors.next(next.reference, next.folderName) }}</button>
     }
-    <a routerLink="/a-traiter">Retour à « À traiter »</a>
+    <a routerLink="/a-traiter">{{ tx().debtors.backToTodo }}</a>
   </div>
 }
 
 <div class="steps">
   <section class="card list" aria-labelledby="docs-title">
-    <h2 id="docs-title">1 · Impayé</h2>
-    <p class="muted small">Factures et provisions échues, les plus anciennes d’abord</p>
+    <h2 id="docs-title">{{ tx().debtors.step1 }}</h2>
+    <p class="muted small">{{ tx().debtors.step1Note }}</p>
     @switch (overview().state) {
       @case ('loading') {
         @if (!debts().length) {
-          <p class="muted">Chargement…</p>
+          <p class="muted">{{ tx().common.loading }}</p>
         }
       }
       @case ('error') {
-        <p class="problem">Les impayés n’ont pas pu être chargés.</p>
+        <p class="problem">{{ tx().debtors.failed }}</p>
       }
     }
     @if (overview().state !== 'error') {
       @if (debts().length === 0 && overview().state === 'ready') {
-        <p class="muted">Rien à relancer : aucune facture ni provision échue.</p>
+        <p class="muted">{{ tx().debtors.nothing }}</p>
       }
       <ul class="docs">
         @for (d of debts(); track d.reference) {
@@ -48,12 +48,12 @@
               <span class="badge" [class.request]="d.kind === 'request'" aria-hidden="true">{{ d.kind === 'invoice' ? 'F' : 'P' }}</span>
               <span class="doc-main">
                 <span class="doc-title">{{ d.reference }} · {{ d.folderName }}</span>
-                <span class="doc-sub">{{ d.daysOverdue }} j de retard · {{ recallText(d) }}</span>
+                <span class="doc-sub">{{ tx().debtors.overdue(d.daysOverdue) }} · {{ tx().debtors.recalls(d.recallCount) }}</span>
               </span>
               <span class="doc-side">
                 <span class="mono">{{ d.remaining | chf }}</span>
                 @if (sent().has(d.reference)) {
-                  <span class="sent">rappel envoyé</span>
+                  <span class="sent">{{ tx().debtors.sent }}</span>
                 }
               </span>
             </button>
@@ -65,60 +65,60 @@
 
   @if (current(); as debt) {
     <section #letterSection class="card letter" aria-labelledby="letter-title">
-      <h2 id="letter-title">2 · Lettre · rappel n° {{ nextDegree() }} pour {{ debt.reference }}</h2>
+      <h2 id="letter-title">{{ tx().debtors.step2(nextDegree(), debt.reference) }}</h2>
       @switch (letterData().state) {
         @case ('loading') {
-          <p class="muted">Chargement du document…</p>
+          <p class="muted">{{ tx().debtors.loadingDoc }}</p>
         }
         @case ('error') {
-          <p class="problem">Le document n’a pas pu être chargé.</p>
+          <p class="problem">{{ tx().debtors.docFailed }}</p>
         }
         @case ('ready') {
           @if (letter(); as l) {
             <dl class="facts">
-              <div><dt>Envoi du</dt><dd>{{ l.recalled.doc.date?.split('-')?.reverse()?.join('.') }}</dd></div>
-              <div><dt>Échu le</dt><dd>{{ l.recalled.doc.dueDate?.split('-')?.reverse()?.join('.') }}</dd></div>
-              <div><dt>Encore dû</dt><dd class="mono">{{ l.recalled.doc.remainingSum | chf }}</dd></div>
-              <div><dt>Rappels précédents</dt><dd>{{ previousRecalls() }}</dd></div>
+              <div><dt>{{ tx().debtors.sentOn }}</dt><dd>{{ l.recalled.doc.date?.split('-')?.reverse()?.join('.') }}</dd></div>
+              <div><dt>{{ tx().debtors.dueOn }}</dt><dd>{{ l.recalled.doc.dueDate?.split('-')?.reverse()?.join('.') }}</dd></div>
+              <div><dt>{{ tx().debtors.stillDue }}</dt><dd class="mono">{{ l.recalled.doc.remainingSum | chf }}</dd></div>
+              <div><dt>{{ tx().debtors.previous }}</dt><dd>{{ previousRecalls() }}</dd></div>
             </dl>
-            <a class="folder-link" [routerLink]="['/dossiers', debt.folderId]">Ouvrir le dossier {{ debt.folderName }}</a>
+            <a class="folder-link" [routerLink]="['/dossiers', debt.folderId]">{{ tx().debtors.openFolder(debt.folderName) }}</a>
 
             @if (modelList().length === 0 && models().state === 'ready') {
-              <p class="problem">Aucun modèle de rappel : créez-en un dans « Modèles de lettres ».</p>
+              <p class="problem">{{ tx().debtors.noModel }}</p>
             } @else {
               <div class="field">
-                <label for="tpl">Modèle</label>
+                <label for="tpl">{{ tx().debtors.model }}</label>
                 <select id="tpl" class="input" [ngModel]="model()?.id" (ngModelChange)="pickModel(+$event)">
                   @for (m of modelList(); track m.id) {
                     <option [value]="m.id">{{ m.name }}</option>
                   }
                 </select>
               </div>
-              <p class="muted small">Proposé d’après le numéro du rappel ; le texte n’est modifié que pour cet envoi.</p>
+              <p class="muted small">{{ tx().debtors.modelNote }}</p>
               <div class="field">
-                <label for="txt">Texte</label>
+                <label for="txt">{{ tx().debtors.text }}</label>
                 <textarea #letterText id="txt" class="input text" rows="12" [ngModel]="text()" (ngModelChange)="editText($event)"></textarea>
               </div>
-              <div class="chips" role="group" aria-label="Insérer un champ">
-                <span class="muted small">Insérer :</span>
+              <div class="chips" role="group" [attr.aria-label]="tx().debtors.insertField">
+                <span class="muted small">{{ tx().debtors.insert }}</span>
                 @for (c of chips; track c.token) {
-                  <button type="button" class="chip" [title]="c.token" (click)="insert(c.token)">{{ c.label }}</button>
+                  <button type="button" class="chip" [title]="c.token" (click)="insert(c.token)">{{ tx().debtors.chips[c.key] }}</button>
                 }
-                <button type="button" class="link small" (click)="resetText()">Rétablir le texte du modèle</button>
+                <button type="button" class="link small" (click)="resetText()">{{ tx().debtors.resetText }}</button>
               </div>
               <fieldset class="options">
-                <legend>Options</legend>
+                <legend>{{ tx().debtors.options }}</legend>
                 <label class="check">
                   <input type="checkbox" [disabled]="recipients().length < 2" [ngModel]="merge()" (ngModelChange)="merge.set($event)" />
-                  Une seule lettre à {{ recipients().length > 1 ? 'tous les clients' : 'plusieurs clients' }}
+                  {{ tx().debtors.oneLetter(recipients().length > 1) }}
                 </label>
                 <label class="check">
-                  Annexes
+                  {{ tx().debtors.attachments }}
                   <select class="input small-select" [ngModel]="attachments()" (ngModelChange)="attachments.set(+$event)">
-                    <option [value]="0">aucune</option>
-                    <option [value]="1">une</option>
-                    <option [value]="2">deux</option>
-                    <option [value]="3">trois</option>
+                    <option [value]="0">{{ tx().debtors.counts[0] }}</option>
+                    <option [value]="1">{{ tx().debtors.counts[1] }}</option>
+                    <option [value]="2">{{ tx().debtors.counts[2] }}</option>
+                    <option [value]="3">{{ tx().debtors.counts[3] }}</option>
                   </select>
                 </label>
               </fieldset>
@@ -130,12 +130,12 @@
 
     <section class="card preview-card" aria-labelledby="preview-title">
       <div class="preview-head">
-        <h2 id="preview-title">3 · Aperçu</h2>
-        <span class="muted small">{{ copies().length }} exemplaire{{ copies().length > 1 ? 's' : '' }}</span>
+        <h2 id="preview-title">{{ tx().debtors.step3 }}</h2>
+        <span class="muted small">{{ tx().debtors.copies(copies().length) }}</span>
       </div>
       @if (preview(); as p) {
         @if (copies()[0]; as first) {
-          <div class="page" aria-label="Aperçu de la lettre">
+          <div class="page" [attr.aria-label]="tx().debtors.letterPreview">
             <div class="addresses">
               @for (a of first.addresses; track $index) {
                 <div class="address">
@@ -160,28 +160,28 @@
         <ul class="slips">
           @for (c of copies(); track $index) {
             <li>
-              <span>{{ c.recipient ? 'Exemplaire de ' + (c.recipient.fullName || c.recipient.lastName) : 'Lettre commune' }}</span>
-              <span class="mono">{{ c.slipCents > 0 ? 'bulletin QR · CHF ' + (c.slipCents / 100 | chf) : 'sans bulletin (rien dû)' }}</span>
+              <span>{{ c.recipient ? tx().debtors.copyOf(c.recipient.fullName || c.recipient.lastName || '') : tx().debtors.common }}</span>
+              <span class="mono">{{ c.slipCents > 0 ? tx().debtors.slip(c.slipCents / 100 | chf) : tx().debtors.noSlip }}</span>
             </li>
           }
         </ul>
-        <p class="muted small">Aperçu indicatif ; le PDF reprend l’en-tête, la signature et les bulletins QR du bureau.</p>
+        <p class="muted small">{{ tx().debtors.previewNote }}</p>
         @if (error(); as message) {
           <p class="problem" role="alert">{{ message }}</p>
         }
         @if (canRecall(debt)) {
           <button type="button" class="btn btn-primary create" [disabled]="busy() || !model()" (click)="createAndPrint()">
-            {{ busy() ? 'Enregistrement…' : 'Créer le rappel n° ' + nextDegree() + ' et imprimer' }}
+            {{ busy() ? tx().common.saving : tx().debtors.create(nextDegree()) }}
           </button>
-          <p class="muted small">Le rappel est enregistré au {{ today.split('-').reverse().join('.') }} pour {{ letter()?.recalled?.doc?.remainingSum | chf }} ; il apparaît dans le fil du dossier.</p>
+          <p class="muted small">{{ tx().debtors.createNote(today.split('-').reverse().join('.'), letter()?.recalled?.doc?.remainingSum | chf) }}</p>
         } @else {
-          <p class="muted">Vos droits ne permettent pas de créer ce rappel.</p>
+          <p class="muted">{{ tx().debtors.noRight }}</p>
         }
         @if ((letter()?.recalled?.doc?.recalls?.length ?? 0) > 0 && canPrint(debt)) {
-          <button type="button" class="link small" [disabled]="busy()" (click)="reprint()">Réimprimer le dernier rappel avec ce texte</button>
+          <button type="button" class="link small" [disabled]="busy()" (click)="reprint()">{{ tx().debtors.reprint }}</button>
         }
       } @else {
-        <p class="muted">L’aperçu s’affiche une fois le document chargé.</p>
+        <p class="muted">{{ tx().debtors.previewLater }}</p>
       }
     </section>
   }

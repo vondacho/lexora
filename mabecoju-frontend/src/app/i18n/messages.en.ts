@@ -1,4 +1,6 @@
 import { commonEn } from './common.i18n';
+import { debtorsEn } from '../features/debtors/debtors.i18n';
+import { foldersEn } from '../features/folders/folders.i18n';
 import { folderEn } from '../features/folder/folder.i18n';
 import { homeEn } from '../features/home/home.i18n';
 import { shellEn } from '../shell/shell.i18n';
@@ -12,4 +14,6 @@ export const en: Messages = {
   login: loginEn,
   home: homeEn,
   folder: folderEn,
+  folders: foldersEn,
+  debtors: debtorsEn,
 };
