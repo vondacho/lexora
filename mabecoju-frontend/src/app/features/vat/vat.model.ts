@@ -1,6 +1,7 @@
 import { IncomeLine, IncomeReport, VatPayment } from '../../api/generated';
 import { formatDate } from '../../shared/format';
 import { fromCents, toCents } from '../../shared/money';
+import { monthNames, texts } from '../../i18n/i18n';
 
 export type PeriodKind = 'S1' | 'S2' | 'year' | 'custom';
 
@@ -10,10 +11,6 @@ export interface Period {
   to: string;
 }
 
-const MONTHS = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-];
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const lastDay = (year: number, month: number) => new Date(year, month, 0).getDate(); // month 1-12
@@ -38,11 +35,11 @@ export function periodLabel(p: Period): string {
   const year = p.from.slice(0, 4);
   switch (p.kind) {
     case 'S1':
-      return `1er semestre ${year}`;
+      return texts().vat.semester1(year);
     case 'S2':
-      return `2e semestre ${year}`;
+      return texts().vat.semester2(year);
     case 'year':
-      return `Année ${year}`;
+      return texts().vat.year(year);
     default:
       return `${formatDate(p.from)} – ${formatDate(p.to)}`;
   }
@@ -69,13 +66,14 @@ export function overlapping(payments: VatPayment[], p: Period): VatPayment[] {
 export type PeriodStatus = { text: string; tone: 'done' | 'open' | 'late' };
 
 export function periodStatus(p: Period, payment: VatPayment | null, today: string): PeriodStatus {
+  const t = texts().vat.status;
   if (payment) {
-    return { text: 'payée le ' + formatDate(payment.paidOn), tone: 'done' };
+    return { text: t.paidOn(formatDate(payment.paidOn)), tone: 'done' };
   }
   if (p.to >= today) {
-    return { text: 'en cours', tone: 'open' };
+    return { text: t.current, tone: 'open' };
   }
-  return { text: deadline(p) < today ? 'en retard' : 'à payer', tone: 'late' };
+  return { text: deadline(p) < today ? t.late : t.toPay, tone: 'late' };
 }
 
 /** VAT at the net tax rate, rounded to the centime. */
@@ -122,7 +120,7 @@ export function monthlyIncome(report: IncomeReport, p: Period): MonthFigure[] {
   const rate = report.vatRatePercent ?? 0;
   return [...sums.entries()].map(([key, cents]) => ({
     key,
-    label: MONTHS[Number(key.slice(5)) - 1],
+    label: monthNames()[Number(key.slice(5)) - 1],
     total: fromCents(cents),
     vat: vatOn(fromCents(cents), rate),
     ratio: cents / max,
@@ -130,17 +128,20 @@ export function monthlyIncome(report: IncomeReport, p: Period): MonthFigure[] {
 }
 
 export function meansOf(line: IncomeLine): string {
-  if (line.cash) return 'comptant';
-  if (line.ticketNumber) return 'bulletin QR';
-  return 'virement';
+  const t = texts().vat.meansOf;
+  if (line.cash) return t.cash;
+  if (line.ticketNumber) return t.slip;
+  return t.transfer;
 }
 
 /** Figures to type in the AFC form. */
 export function afcText(p: Period, report: IncomeReport): string {
+  const t = texts().vat.afc;
+  const colon = texts().common.colon;
   return [
-    `Période : ${formatDate(p.from)} – ${formatDate(p.to)}`,
-    `Chiffre d’affaires encaissé, TVA comprise : ${(report.total ?? 0).toFixed(2)}`,
-    `Taux de la dette fiscale nette : ${report.vatRatePercent} %`,
-    `TVA due : ${(report.vatDue ?? 0).toFixed(2)}`,
+    `${t.period}${colon}${formatDate(p.from)} – ${formatDate(p.to)}`,
+    `${t.turnover}${colon}${(report.total ?? 0).toFixed(2)}`,
+    `${t.rate}${colon}${report.vatRatePercent} %`,
+    `${t.due}${colon}${(report.vatDue ?? 0).toFixed(2)}`,
   ].join('\n');
 }

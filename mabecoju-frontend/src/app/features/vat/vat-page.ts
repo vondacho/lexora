@@ -9,6 +9,7 @@ import { ChfPipe, formatDate, SwissDatePipe } from '../../shared/format';
 import { todayIso } from '../../shared/money';
 import { ofMonth } from '../expenses/expenses.model';
 import { blobProblemMessage, problemMessage } from '../../shared/problem';
+import { texts } from '../../i18n/i18n';
 import {
   afcText,
   booksChange,
@@ -55,6 +56,7 @@ export class VatPage {
     const y = this.year();
     return [semester(y, 1), semester(y, 2), wholeYear(y)];
   });
+  protected readonly tx = texts;
   protected readonly label = periodLabel;
 
   protected readonly state = signal<'loading' | 'ready' | 'error'>('loading');
@@ -158,9 +160,9 @@ export class VatPage {
         }),
       );
       await this.load(p);
-      this.flash.set('Paiement de la TVA enregistré.');
+      this.flash.set(texts().vat.recorded);
     } catch (e: unknown) {
-      this.error.set(problemMessage(e, 'Le paiement n’a pas pu être enregistré.'));
+      this.error.set(problemMessage(e, texts().vat.recordFailed));
     } finally {
       this.busy.set(false);
     }
@@ -179,9 +181,9 @@ export class VatPage {
     try {
       await firstValueFrom(this.vat.deleteVatPayment({ id: v.id }), { defaultValue: null });
       await this.load(this.period());
-      this.flash.set('Paiement supprimé.');
+      this.flash.set(texts().vat.deleted);
     } catch (e: unknown) {
-      this.error.set(problemMessage(e, 'Le paiement n’a pas pu être supprimé.'));
+      this.error.set(problemMessage(e, texts().vat.deleteFailed));
     } finally {
       this.busy.set(false);
       this.confirmDelete.set(false);
@@ -204,7 +206,7 @@ export class VatPage {
       await this.load(this.period());
       this.flash.set(`Taux changé à ${this.rateDraft} % : il vaut pour tous les décomptes non encore payés.`);
     } catch (e: unknown) {
-      this.error.set(problemMessage(e, 'Le taux n’a pas pu être changé.'));
+      this.error.set(problemMessage(e, texts().vat.rateFailed));
     } finally {
       this.busy.set(false);
     }
@@ -217,7 +219,7 @@ export class VatPage {
       const pdf = await firstValueFrom(this.reports.printPeriodStatement({ from: p.from, to: p.to }, 'body', false, ACCEPT_PDF));
       openPdf(pdf, `releves_${p.from}_${p.to}.pdf`);
     } catch (e: unknown) {
-      this.error.set(await blobProblemMessage(e, 'Le relevé n’a pas pu être produit.'));
+      this.error.set(await blobProblemMessage(e, texts().vat.pdfFailed));
     }
   }
 
@@ -229,7 +231,7 @@ export class VatPage {
     const text = afcText(this.period(), r);
     try {
       await navigator.clipboard.writeText(text);
-      this.flash.set('Chiffres copiés : ' + text.split('\n').slice(1).join(' · '));
+      this.flash.set(texts().vat.copied(text.split('\n').slice(1).join(' · ')));
     } catch {
       this.flash.set(text.split('\n').join(' · '));
     }
