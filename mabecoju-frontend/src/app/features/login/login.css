@@ -21,6 +21,11 @@
   gap: 10px;
 }
 
+.lang {
+  margin-left: auto;
+  align-self: center;
+}
+
 .brand-name {
   font-weight: 600;
   font-size: 18px;

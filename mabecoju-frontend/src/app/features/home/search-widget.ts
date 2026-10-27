@@ -4,14 +4,11 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 import { Folder, FoldersService, SearchFoldersRequestParams } from '../../api/generated';
 import { loadable, Loadable } from './home.model';
+import { texts } from '../../i18n/i18n';
 
 type Criterion = 'name' | 'number' | 'customer';
 
-const CRITERIA: { value: Criterion; label: string; placeholder: string }[] = [
-  { value: 'name', label: 'Nom', placeholder: 'ex. Dupont' },
-  { value: 'number', label: 'N°', placeholder: 'ex. 1651' },
-  { value: 'customer', label: 'Client', placeholder: 'prénom ou nom d’un client' },
-];
+const CRITERIA: Criterion[] = ['name', 'number', 'customer'];
 const SHOWN = 8;
 
 @Component({
@@ -21,32 +18,32 @@ const SHOWN = 8;
     <section class="card widget" aria-labelledby="search-title">
       <div class="widget-head">
         <div>
-          <h2 id="search-title">Rechercher un dossier</h2>
-          <p class="muted">Par nom, numéro ou client · le début suffit</p>
+          <h2 id="search-title">{{ tx().home.search.title }}</h2>
+          <p class="muted">{{ tx().home.search.subtitle }}</p>
         </div>
       </div>
-      <div class="criteria" role="group" aria-label="Rechercher par">
-        @for (c of criteria; track c.value) {
-          <button type="button" class="chip" [class.on]="criterion() === c.value" [attr.aria-pressed]="criterion() === c.value" (click)="criterion.set(c.value)">
-            {{ c.label }}
+      <div class="criteria" role="group" [attr.aria-label]="tx().home.search.by">
+        @for (c of criteria; track c) {
+          <button type="button" class="chip" [class.on]="criterion() === c" [attr.aria-pressed]="criterion() === c" (click)="criterion.set(c)">
+            {{ tx().home.search.criteria[c] }}
           </button>
         }
       </div>
       <div class="field">
-        <label for="folder-query">{{ current().label === 'N°' ? 'Numéro du dossier' : current().label === 'Nom' ? 'Nom du dossier' : 'Nom du client' }}</label>
-        <input #queryInput id="folder-query" class="input" type="search" autocomplete="off" [attr.inputmode]="criterion() === 'number' ? 'numeric' : null" [placeholder]="current().placeholder" [value]="query()" (input)="query.set($any($event.target).value)" />
+        <label for="folder-query">{{ tx().home.search.labels[criterion()] }}</label>
+        <input #queryInput id="folder-query" class="input" type="search" autocomplete="off" [attr.inputmode]="criterion() === 'number' ? 'numeric' : null" [placeholder]="tx().home.search.placeholders[criterion()]" [value]="query()" (input)="query.set($any($event.target).value)" />
       </div>
       @switch (results().state) {
         @case ('loading') {
-          <p class="empty">Recherche…</p>
+          <p class="empty">{{ tx().home.search.searching }}</p>
         }
         @case ('error') {
-          <p class="problem">La recherche n’a pas abouti.</p>
+          <p class="problem">{{ tx().home.search.failed }}</p>
         }
         @case ('ready') {
           @if (found(); as folders) {
             @if (folders.length === 0) {
-              <p class="empty">Aucun dossier ne correspond.</p>
+              <p class="empty">{{ tx().home.search.none }}</p>
             } @else {
               <ul class="rows">
                 @for (f of folders.slice(0, shown); track f.id) {
@@ -63,11 +60,11 @@ const SHOWN = 8;
                 }
               </ul>
               <p class="widget-foot muted">
-                {{ folders.length }} dossier{{ folders.length > 1 ? 's' : '' }}{{ folders.length > shown ? ' · ' + shown + ' affichés' : '' }}
+                {{ tx().home.search.count(folders.length, shown) }}
               </p>
             }
           } @else {
-            <p class="empty">Tapez le début d’un nom ou d’un numéro.</p>
+            <p class="empty">{{ tx().home.search.hint }}</p>
           }
         }
       }
@@ -84,11 +81,11 @@ export class SearchWidget {
   private readonly folders = inject(FoldersService);
   private readonly input = viewChild.required<ElementRef<HTMLInputElement>>('queryInput');
 
+  protected readonly tx = texts;
   protected readonly criteria = CRITERIA;
   protected readonly shown = SHOWN;
   protected readonly criterion = signal<Criterion>('name');
   protected readonly query = signal('');
-  protected readonly current = computed(() => CRITERIA.find((c) => c.value === this.criterion())!);
 
   private readonly search = computed(() => ({ criterion: this.criterion(), query: this.query().trim() }));
 
@@ -130,13 +127,14 @@ export class SearchWidget {
 
   protected subtitle(folder: Folder): string {
     const parts = [];
+    const t = texts().common;
     if (folder.type === 'TUTELAGE') {
-      parts.push('Tutelle');
+      parts.push(t.tutelage);
     } else if (folder.type === 'INVOICING') {
-      parts.push('Facturation');
+      parts.push(t.invoicing);
     }
     if (folder.handledBy) {
-      parts.push('géré par ' + folder.handledBy);
+      parts.push(t.handledBy(folder.handledBy));
     }
     return parts.join(' · ');
   }

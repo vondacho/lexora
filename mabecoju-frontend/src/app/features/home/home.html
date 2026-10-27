@@ -1,12 +1,12 @@
 <div class="head">
   <div>
-    <h1>À traiter</h1>
+    <h1>{{ tx().shell.nav.todo }}</h1>
     <p class="muted date">
-      {{ today | date: 'EEEE d MMMM y' }}
+      {{ todayText() }}
       @if (pending(); as count) {
-        · {{ count }} action{{ count > 1 ? 's' : '' }} en attente
+        · {{ tx().home.pending(count) }}
       } @else if (pending() === 0) {
-        · rien en attente
+        · {{ tx().home.nothingPending }}
       }
     </p>
   </div>
@@ -24,6 +24,6 @@
     <mbj-search-widget id="recherche" />
   }
   @if (!showDebtors && !showMonth && !showSearch) {
-    <p class="card muted">Vos droits ne donnent accès à aucun élément de cette page.</p>
+    <p class="card muted">{{ tx().home.noWidget }}</p>
   }
 </div>

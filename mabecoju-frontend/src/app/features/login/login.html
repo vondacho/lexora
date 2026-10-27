@@ -2,22 +2,23 @@
   <form class="card login" (ngSubmit)="submit()" aria-labelledby="login-title">
     <div class="brand">
       <span class="brand-name">mabecoju</span>
-      <span class="muted">juriste &amp; médiatrice</span>
+      <span class="muted">{{ t().shell.tagline }}</span>
+      <mbj-lang-toggle class="lang" />
     </div>
-    <h1 id="login-title">Connexion</h1>
+    <h1 id="login-title">{{ t().login.title }}</h1>
     <div class="field">
-      <label for="username">Nom d’utilisateur</label>
+      <label for="username">{{ t().login.username }}</label>
       <input id="username" name="username" class="input" autocomplete="username" required [(ngModel)]="username" autofocus />
     </div>
     <div class="field">
-      <label for="password">Mot de passe</label>
+      <label for="password">{{ t().login.password }}</label>
       <input id="password" name="password" type="password" class="input" autocomplete="current-password" required [(ngModel)]="password" />
     </div>
-    @if (error(); as message) {
-      <p class="problem" role="alert">{{ message }}</p>
+    @if (error(); as e) {
+      <p class="problem" role="alert">{{ e === 'credentials' ? t().login.badCredentials : t().common.serverDown }}</p>
     }
     <button type="submit" class="btn btn-primary" [disabled]="busy()">
-      {{ busy() ? 'Connexion…' : 'Se connecter' }}
+      {{ busy() ? t().login.busy : t().login.submit }}
     </button>
   </form>
 </main>

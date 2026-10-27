@@ -4,6 +4,8 @@ import { filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../core/auth.service';
 import { NAV_ITEMS } from './navigation';
+import { texts } from '../i18n/i18n';
+import { LangToggle } from '../i18n/lang-toggle';
 
 const NAV_KEY = 'mabecoju.nav';
 /** Below this width the sidebar becomes a drawer over the page. */
@@ -11,7 +13,7 @@ const NARROW_QUERY = '(max-width: 900px)';
 
 @Component({
   selector: 'mbj-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, LangToggle],
   templateUrl: './shell.html',
   styleUrl: './shell.css',
   host: { '(keydown.escape)': 'closeDrawer()' },
@@ -21,6 +23,7 @@ export class Shell {
   private readonly router = inject(Router);
 
   protected readonly items = NAV_ITEMS;
+  protected readonly t = texts;
   protected readonly user = this.auth.user;
   protected readonly initials = computed(() => {
     const u = this.user();
@@ -37,7 +40,7 @@ export class Shell {
   /** Drawer shown on a narrow screen; always starts closed. */
   private readonly drawerOpen = signal(false);
   protected readonly navOpen = computed(() => (this.narrow() ? this.drawerOpen() : this.sidebarOpen()));
-  protected readonly navLabel = computed(() => (this.navOpen() ? 'Masquer le menu' : 'Afficher le menu'));
+  protected readonly navLabel = computed(() => (this.navOpen() ? texts().shell.hideMenu : texts().shell.showMenu));
 
   constructor() {
     const media = typeof matchMedia === 'function' ? matchMedia(NARROW_QUERY) : null;

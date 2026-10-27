@@ -170,6 +170,11 @@
   cursor: pointer;
 }
 
+.nav-lang {
+  margin-top: 16px;
+  padding: 0 12px;
+}
+
 .backdrop {
   position: fixed;
   inset: 0;
@@ -215,5 +220,11 @@
 
   .user {
     margin-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .lang {
+    display: none;
   }
 }

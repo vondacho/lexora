@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Problem } from '../api/generated';
-import { ERROR_MESSAGES, translateProblem } from './errors';
+import { setLang } from '../i18n/i18n';
+import { ERROR_MESSAGES_EN, ERROR_MESSAGES_FR, translateProblem } from './errors';
 import { blobProblemMessage, problemMessage } from './problem';
 
 describe('problem messages', () => {
@@ -34,11 +35,23 @@ describe('problem messages', () => {
     expect(await blobProblemMessage(new HttpErrorResponse({ status: 500, error: new Blob(['oops']) }), 'fallback')).toBe('fallback');
   });
 
-  it('has a French text for every code of the contract', () => {
+  it('has a text in both languages for every code of the contract', () => {
     for (const code of Object.values(Problem.CodeEnum)) {
-      const text = ERROR_MESSAGES[code]({});
-      expect(text.length, code).toBeGreaterThan(10);
-      expect(text, code).not.toMatch(/undefined/);
+      for (const messages of [ERROR_MESSAGES_FR, ERROR_MESSAGES_EN]) {
+        const text = messages[code]({});
+        expect(text.length, code).toBeGreaterThan(10);
+        expect(text, code).not.toMatch(/undefined/);
+      }
+    }
+  });
+
+  it('follows the language of the interface', () => {
+    setLang('en');
+    try {
+      expect(translateProblem({ code: 'FIELD_MANDATORY', params: { field: 'Folder name' } })).toBe('Enter the name of the folder.');
+      expect(problemMessage(new HttpErrorResponse({ status: 0 }))).toBe('The server does not answer. Try again in a moment.');
+    } finally {
+      setLang('fr');
     }
   });
 });

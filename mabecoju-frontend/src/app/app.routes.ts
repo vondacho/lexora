@@ -5,7 +5,7 @@ import { authGuard } from './core/auth.guard';
 export const routes: Routes = [
   {
     path: 'connexion',
-    title: 'Connexion — mabecoju',
+    data: { titleKey: 'login' },
     loadComponent: () => import('./features/login/login').then((m) => m.Login),
   },
   {
@@ -16,48 +16,48 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'a-traiter' },
       {
         path: 'a-traiter',
-        title: 'À traiter — mabecoju',
+        data: { titleKey: 'todo' },
         loadComponent: () => import('./features/home/home').then((m) => m.Home),
       },
       {
         path: 'dossiers/:id',
-        title: 'Dossier — mabecoju',
+        data: { titleKey: 'folder' },
         loadComponent: () => import('./features/folder/folder-page').then((m) => m.FolderPage),
       },
       {
         path: 'dossiers',
         pathMatch: 'full',
-        title: 'Dossiers — mabecoju',
+        data: { titleKey: 'folders' },
         loadComponent: () => import('./features/folders/folders-page').then((m) => m.FoldersPage),
       },
       {
         path: 'debiteurs',
-        title: 'Débiteurs & rappels — mabecoju',
+        data: { titleKey: 'debtors' },
         loadComponent: () => import('./features/debtors/debtors-page').then((m) => m.DebtorsPage),
       },
       {
         path: 'encaissements',
-        title: 'Encaissements — mabecoju',
+        data: { titleKey: 'bank' },
         loadComponent: () => import('./features/bank/bank-page').then((m) => m.BankPage),
       },
       {
         path: 'depenses',
-        title: 'Dépenses — mabecoju',
+        data: { titleKey: 'expenses' },
         loadComponent: () => import('./features/expenses/expenses-page').then((m) => m.ExpensesPage),
       },
       {
         path: 'tva',
-        title: 'Décompte TVA — mabecoju',
+        data: { titleKey: 'vat' },
         loadComponent: () => import('./features/vat/vat-page').then((m) => m.VatPage),
       },
       {
         path: 'syntheses',
-        title: 'Synthèses — mabecoju',
+        data: { titleKey: 'summaries' },
         loadComponent: () => import('./features/summaries/summaries-page').then((m) => m.SummariesPage),
       },
       {
         path: 'modeles',
-        title: 'Modèles de lettres — mabecoju',
+        data: { titleKey: 'templates' },
         loadComponent: () => import('./features/templates/templates-page').then((m) => m.TemplatesPage),
       },
     ],

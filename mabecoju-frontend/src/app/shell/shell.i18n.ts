@@ -1,0 +1,48 @@
+export const shellFr = {
+  skip: 'Aller au contenu',
+  tagline: 'juriste & médiatrice',
+  search: 'Rechercher un dossier',
+  searchPlaceholder: 'Rechercher un dossier, une référence ou une action…',
+  logout: 'Se déconnecter',
+  mainNav: 'Navigation principale',
+  closeMenu: 'Fermer le menu',
+  showMenu: 'Afficher le menu',
+  hideMenu: 'Masquer le menu',
+  /** Menu entries and page titles. */
+  nav: {
+    todo: 'À traiter',
+    folders: 'Dossiers',
+    folder: 'Dossier',
+    debtors: 'Débiteurs & rappels',
+    bank: 'Encaissements',
+    expenses: 'Dépenses',
+    vat: 'Décompte TVA',
+    summaries: 'Synthèses',
+    templates: 'Modèles de lettres',
+    login: 'Connexion',
+  },
+};
+
+export const shellEn: typeof shellFr = {
+  skip: 'Skip to content',
+  tagline: 'lawyer & mediator',
+  search: 'Search a folder',
+  searchPlaceholder: 'Search a folder, a reference or an action…',
+  logout: 'Log out',
+  mainNav: 'Main navigation',
+  closeMenu: 'Close the menu',
+  showMenu: 'Show the menu',
+  hideMenu: 'Hide the menu',
+  nav: {
+    todo: 'To do',
+    folders: 'Folders',
+    folder: 'Folder',
+    debtors: 'Debtors & reminders',
+    bank: 'Bank receipts',
+    expenses: 'Expenses',
+    vat: 'VAT return',
+    summaries: 'Summaries',
+    templates: 'Letter templates',
+    login: 'Log in',
+  },
+};

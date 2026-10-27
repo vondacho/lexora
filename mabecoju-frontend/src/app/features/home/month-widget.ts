@@ -3,12 +3,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, forkJoin, map, of } from 'rxjs';
 import { ReportsService, SettingsService } from '../../api/generated';
 import { ChfPipe } from '../../shared/format';
+import { monthNames, texts } from '../../i18n/i18n';
 import { loadable, monthSummary } from './home.model';
 
-const MONTH_NAMES = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-];
 
 @Component({
   selector: 'mbj-month-widget',
@@ -17,40 +14,40 @@ const MONTH_NAMES = [
     <section class="card widget" aria-labelledby="month-title">
       <div class="widget-head">
         <div>
-          <h2 id="month-title">{{ title }}</h2>
-          <p class="muted">Au {{ today.getDate() }} {{ monthName }} · comparé à {{ previousName }}</p>
+          <h2 id="month-title">{{ title() }}</h2>
+          <p class="muted">{{ tx().home.month.asOf(today.getDate(), monthName(), previousName()) }}</p>
         </div>
       </div>
       @switch (data().state) {
         @case ('loading') {
-          <p class="empty">Chargement…</p>
+          <p class="empty">{{ tx().common.loading }}</p>
         }
         @case ('error') {
-          <p class="problem">Les chiffres du mois n’ont pas pu être chargés.</p>
+          <p class="problem">{{ tx().home.month.failed }}</p>
         }
         @case ('ready') {
           @if (summary(); as s) {
             <div class="tiles">
               <div class="tile in">
-                <span class="label">Encaissé</span>
+                <span class="label">{{ tx().home.month.incomes }}</span>
                 <span class="value">{{ s.figures.incomes | chf }}</span>
-                <span class="note">factures {{ s.figures.invoicePayments | chf }} · avances {{ s.figures.advances | chf }}</span>
-                <span class="note">{{ previousName }} : {{ s.previous.incomes | chf }}</span>
+                <span class="note">{{ tx().home.month.incomesDetail(s.figures.invoicePayments | chf, s.figures.advances | chf) }}</span>
+                <span class="note">{{ previousName() }} : {{ s.previous.incomes | chf }}</span>
               </div>
               <div class="tile">
-                <span class="label">Sorties du bureau</span>
+                <span class="label">{{ tx().home.month.expenses }}</span>
                 <span class="value">{{ s.figures.expenses | chf }}</span>
-                <span class="note">{{ previousName }} : {{ s.previous.expenses | chf }}</span>
+                <span class="note">{{ previousName() }} : {{ s.previous.expenses | chf }}</span>
               </div>
               <div class="tile vat">
-                <span class="label">TVA à provisionner</span>
+                <span class="label">{{ tx().home.month.vat }}</span>
                 <span class="value">{{ s.vatDue | chf }}</span>
-                <span class="note">{{ rate() !== null ? 'taux ' + rate() + ' % des encaissements' : 'taux inconnu' }}</span>
+                <span class="note">{{ rate() !== null ? tx().home.month.vatRate(rate()!) : tx().home.month.vatUnknown }}</span>
               </div>
               <div class="tile">
-                <span class="label">Solde</span>
+                <span class="label">{{ tx().home.month.balance }}</span>
                 <span class="value" [class.negative]="s.figures.balance < 0">{{ s.figures.balance | chf }}</span>
-                <span class="note">encaissé − sorties</span>
+                <span class="note">{{ tx().home.month.balanceNote }}</span>
               </div>
             </div>
           }
@@ -73,10 +70,11 @@ export class MonthWidget {
   private readonly reports = inject(ReportsService);
   private readonly settings = inject(SettingsService);
 
+  protected readonly tx = texts;
   protected readonly today = new Date();
-  protected readonly monthName = MONTH_NAMES[this.today.getMonth()];
-  protected readonly previousName = MONTH_NAMES[(this.today.getMonth() + 11) % 12];
-  protected readonly title = capitalize(this.monthName) + ' ' + this.today.getFullYear();
+  protected readonly monthName = computed(() => monthNames()[this.today.getMonth()]);
+  protected readonly previousName = computed(() => monthNames()[(this.today.getMonth() + 11) % 12]);
+  protected readonly title = computed(() => capitalize(this.monthName()) + ' ' + this.today.getFullYear());
 
   protected readonly data = toSignal(
     loadable(

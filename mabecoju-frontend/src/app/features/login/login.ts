@@ -3,10 +3,12 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { texts } from '../../i18n/i18n';
+import { LangToggle } from '../../i18n/lang-toggle';
 
 @Component({
   selector: 'mbj-login',
-  imports: [FormsModule],
+  imports: [FormsModule, LangToggle],
   templateUrl: './login.html',
   styleUrl: './login.css',
 })
@@ -20,7 +22,9 @@ export class Login {
   protected username = '';
   protected password = '';
   protected readonly busy = signal(false);
-  protected readonly error = signal<string | null>(null);
+  protected readonly t = texts;
+  /** Kind of failure, shown in the current language. */
+  protected readonly error = signal<'credentials' | 'server' | null>(null);
 
   protected submit(): void {
     if (!this.username || !this.password || this.busy()) {
@@ -37,11 +41,7 @@ export class Login {
       error: (e: unknown) => {
         this.busy.set(false);
         this.password = '';
-        this.error.set(
-          e instanceof HttpErrorResponse && e.status === 401
-            ? 'Nom d’utilisateur ou mot de passe incorrect.'
-            : 'Le serveur ne répond pas. Réessayez dans un instant.',
-        );
+        this.error.set(e instanceof HttpErrorResponse && e.status === 401 ? 'credentials' : 'server');
       },
     });
   }
