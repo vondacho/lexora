@@ -1,23 +1,23 @@
-<h1>Encaissements bancaires</h1>
-<p class="muted sub">Les paiements du relevé sont rapprochés de leur débiteur grâce aux références des bulletins QR.</p>
+<h1>{{ tx().bank.title }}</h1>
+<p class="muted sub">{{ tx().bank.sub }}</p>
 
 @if (!canImport) {
-  <p class="card muted">Vos droits ne permettent pas d’enregistrer des encaissements.</p>
+  <p class="card muted">{{ tx().bank.noRight }}</p>
 } @else {
   @if (outcome(); as o) {
     <div class="done" role="status">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"></path></svg>
       <span class="done-text">
-        <strong>{{ o.recorded }} paiement{{ o.recorded > 1 ? 's' : '' }} enregistré{{ o.recorded > 1 ? 's' : '' }}.</strong>
-        {{ o.settled }} document{{ o.settled > 1 ? 's' : '' }} soldé{{ o.settled > 1 ? 's' : '' }}
+        <strong>{{ tx().bank.recorded(o.recorded) }}</strong>
+        {{ tx().bank.settled(o.settled) }}
         @if (o.advances > 0) {
-          · {{ o.advances | chf }} en avances
+          · {{ tx().bank.advances(o.advances | chf) }}
         }
         @if (o.skipped > 0) {
-          · {{ o.skipped }} déjà enregistré{{ o.skipped > 1 ? 's' : '' }}, ignoré{{ o.skipped > 1 ? 's' : '' }}
+          · {{ tx().bank.skipped(o.skipped) }}
         }
       </span>
-      <a routerLink="/a-traiter">Retour à « À traiter »</a>
+      <a routerLink="/a-traiter">{{ tx().bank.backToTodo }}</a>
     </div>
   }
   @if (error(); as message) {
@@ -28,10 +28,10 @@
     <section class="drop" [class.dragging]="dragging()" aria-labelledby="drop-title"
              (dragover)="$event.preventDefault(); dragging.set(true)" (dragleave)="dragging.set(false)" (drop)="onDrop($event)">
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"></path><path d="m7 9 5-5 5 5"></path><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"></path></svg>
-      <h2 id="drop-title">Déposez le relevé camt.054 de la banque</h2>
-      <p class="muted">Fichier ISO 20022 téléchargé depuis l’e-banking. Rien n’est enregistré avant votre validation.</p>
+      <h2 id="drop-title">{{ tx().bank.drop }}</h2>
+      <p class="muted">{{ tx().bank.dropNote }}</p>
       <label class="btn btn-primary pick">
-        {{ reading() ? 'Lecture…' : 'Choisir le fichier' }}
+        {{ reading() ? tx().bank.reading : tx().bank.pick }}
         <input type="file" accept=".xml,application/xml,text/xml" class="visually-hidden" (change)="onPick($event)" [disabled]="reading()" />
       </label>
     </section>
@@ -40,56 +40,56 @@
       <div class="file">
         <span class="mono chip-file">{{ fileName() }}</span>
         <span class="muted small">
-          {{ a.accountIban || 'compte inconnu' }}
+          {{ a.accountIban || tx().bank.unknownAccount }}
           @if (a.from) {
-            · du {{ a.from | swissDate }} au {{ a.to | swissDate }}
+            · {{ tx().bank.period(a.from | swissDate, a.to | swissDate) }}
           }
           @if ((a.skippedDebits ?? 0) > 0) {
-            · {{ a.skippedDebits }} débit{{ (a.skippedDebits ?? 0) > 1 ? 's' : '' }} ignoré{{ (a.skippedDebits ?? 0) > 1 ? 's' : '' }}
+            · {{ tx().bank.debits(a.skippedDebits ?? 0) }}
           }
         </span>
-        <button type="button" class="btn btn-small" (click)="reset()">Autre fichier</button>
+        <button type="button" class="btn btn-small" (click)="reset()">{{ tx().bank.otherFile }}</button>
       </div>
 
       <div class="tiles">
-        <div class="tile"><span class="label">Paiements</span><span class="value">{{ summary().count }}</span><span class="note mono">{{ summary().total | chf }}</span></div>
-        <div class="tile ok"><span class="label">Rapprochés</span><span class="value">{{ summary().ready }}</span><span class="note mono">{{ summary().readyTotal | chf }}</span></div>
-        <div class="tile warn"><span class="label">À vérifier</span><span class="value">{{ summary().toCheck }}</span><span class="note">suggestions et sans document</span></div>
+        <div class="tile"><span class="label">{{ tx().bank.payments }}</span><span class="value">{{ summary().count }}</span><span class="note mono">{{ summary().total | chf }}</span></div>
+        <div class="tile ok"><span class="label">{{ tx().bank.matched }}</span><span class="value">{{ summary().ready }}</span><span class="note mono">{{ summary().readyTotal | chf }}</span></div>
+        <div class="tile warn"><span class="label">{{ tx().bank.toCheck }}</span><span class="value">{{ summary().toCheck }}</span><span class="note">{{ tx().bank.toCheckNote }}</span></div>
         @if (summary().duplicates > 0) {
-          <div class="tile"><span class="label">Déjà importés</span><span class="value">{{ summary().duplicates }}</span><span class="note">ne seront pas repris</span></div>
+          <div class="tile"><span class="label">{{ tx().bank.duplicates }}</span><span class="value">{{ summary().duplicates }}</span><span class="note">{{ tx().bank.duplicatesNote }}</span></div>
         }
       </div>
 
       <section class="card lines-card" aria-labelledby="lines-title">
-        <h2 id="lines-title">Paiements du relevé</h2>
+        <h2 id="lines-title">{{ tx().bank.lines }}</h2>
         @if (rows().length === 0) {
-          <p class="muted">Aucun crédit dans ce relevé.</p>
+          <p class="muted">{{ tx().bank.noCredit }}</p>
         } @else {
           <div class="table-box">
             <table class="lines">
               <thead>
                 <tr>
-                  <th scope="col">Date</th>
-                  <th scope="col">Payeur selon la banque</th>
-                  <th scope="col">Référence</th>
-                  <th scope="col" class="num">Montant</th>
-                  <th scope="col">Rapprochement</th>
-                  <th scope="col">Statut</th>
+                  <th scope="col">{{ tx().bank.date }}</th>
+                  <th scope="col">{{ tx().bank.payerByBank }}</th>
+                  <th scope="col">{{ tx().bank.reference }}</th>
+                  <th scope="col" class="num">{{ tx().bank.amount }}</th>
+                  <th scope="col">{{ tx().bank.matching }}</th>
+                  <th scope="col">{{ tx().bank.status }}</th>
                 </tr>
               </thead>
               <tbody>
                 @for (r of rows(); track r.index) {
                   <tr [attr.data-status]="r.entry.status" [class.included]="r.decision.include && r.bookable">
-                    <td class="mono" data-label="Date">{{ r.entry.date | swissDate: false }}</td>
-                    <td data-label="Payeur">
+                    <td class="mono" [attr.data-label]="tx().bank.date">{{ r.entry.date | swissDate: false }}</td>
+                    <td [attr.data-label]="tx().bank.payer">
                       {{ r.entry.debtorName || '—' }}
                       @if (r.entry.remittance) {
                         <span class="muted small block">« {{ r.entry.remittance }} »</span>
                       }
                     </td>
-                    <td class="mono small ref" data-label="Référence">{{ r.entry.reference ? reference(r.entry.reference) : 'sans référence' }}</td>
-                    <td class="mono num" data-label="Montant">{{ r.entry.amount | chf }}{{ r.entry.currency !== 'CHF' ? ' ' + r.entry.currency : '' }}</td>
-                    <td data-label="Rapprochement">
+                    <td class="mono small ref" [attr.data-label]="tx().bank.reference">{{ r.entry.reference ? reference(r.entry.reference) : tx().bank.noReference }}</td>
+                    <td class="mono num" [attr.data-label]="tx().bank.amount">{{ r.entry.amount | chf }}{{ r.entry.currency !== 'CHF' ? ' ' + r.entry.currency : '' }}</td>
+                    <td [attr.data-label]="tx().bank.matching">
                       @if (r.decision.manual; as m) {
                         <a [routerLink]="['/dossiers', m.folderId]">{{ m.folderName }}</a> · {{ ref(m.kind, m.documentId) }}
                       } @else if (r.entry.target; as t) {
@@ -99,36 +99,36 @@
                         <span class="muted small block">{{ r.effect }}</span>
                       }
                       @if (r.entry.status === 'UNMATCHED' && r.entry.problem !== 'CURRENCY') {
-                        <select class="input choose" [attr.aria-label]="'Document payé par ' + (r.entry.debtorName || 'ce paiement')" [ngModel]="choiceKey(r)" (ngModelChange)="choose(r, $event)">
-                          <option value="">Choisir le document payé…</option>
+                        <select class="input choose" [attr.aria-label]="tx().bank.paidBy(r.entry.debtorName ?? '')" [ngModel]="choiceKey(r)" (ngModelChange)="choose(r, $event)">
+                          <option value="">{{ tx().bank.choose }}</option>
                           @for (d of openDocuments(); track d.kind + d.documentId) {
-                            <option [value]="d.kind + ':' + d.documentId">{{ d.folderName }} · {{ ref(d.kind, d.documentId) }} · reste {{ d.remaining | chf }}</option>
+                            <option [value]="d.kind + ':' + d.documentId">{{ d.folderName }} · {{ ref(d.kind, d.documentId) }} · {{ tx().bank.remaining(d.remaining | chf) }}</option>
                           }
                         </select>
                       }
                     </td>
-                    <td data-label="Statut">
+                    <td [attr.data-label]="tx().bank.status">
                       @switch (r.entry.status) {
                         @case ('DUPLICATE') {
-                          <span class="pill neutral">déjà importé</span>
+                          <span class="pill neutral">{{ tx().bank.alreadyImported }}</span>
                         }
                         @case ('READY') {
-                          <label class="check"><input type="checkbox" [checked]="r.decision.include" (change)="toggle(r)" /> {{ r.decision.include ? 'rapproché' : 'ignoré' }}</label>
+                          <label class="check"><input type="checkbox" [checked]="r.decision.include" (change)="toggle(r)" /> {{ r.decision.include ? tx().bank.matchedOne : tx().bank.ignored }}</label>
                         }
                         @case ('CHECK') {
-                          <span class="problem-text small">{{ problems[r.entry.problem ?? ''] }}</span>
+                          <span class="problem-text small">{{ tx().bank.problems[r.entry.problem ?? ''] }}</span>
                           @if (r.decision.include) {
-                            <label class="check"><input type="checkbox" checked (change)="toggle(r)" /> confirmé</label>
+                            <label class="check"><input type="checkbox" checked (change)="toggle(r)" /> {{ tx().bank.confirmed }}</label>
                           } @else {
                             <button type="button" class="btn btn-small btn-warn" (click)="toggle(r)">
-                              {{ r.entry.problem === 'OVERPAID' ? 'Accepter l’écart' : 'Associer à ' + r.documentRef }}
+                              {{ r.entry.problem === 'OVERPAID' ? tx().bank.acceptGap : tx().bank.linkTo(r.documentRef ?? '') }}
                             </button>
                           }
                         }
                         @default {
-                          <span class="problem-text small">{{ problems[r.entry.problem ?? ''] }}</span>
+                          <span class="problem-text small">{{ tx().bank.problems[r.entry.problem ?? ''] }}</span>
                           @if (r.decision.manual) {
-                            <label class="check"><input type="checkbox" [checked]="r.decision.include" (change)="toggle(r)" /> {{ r.decision.include ? 'associé' : 'ignoré' }}</label>
+                            <label class="check"><input type="checkbox" [checked]="r.decision.include" (change)="toggle(r)" /> {{ r.decision.include ? tx().bank.linked : tx().bank.ignored }}</label>
                           }
                         }
                       }
@@ -141,13 +141,13 @@
         }
         <div class="footer">
           <span class="muted">
-            {{ summary().included }} paiement{{ summary().included > 1 ? 's' : '' }} à enregistrer · {{ summary().includedTotal | chf }}
+            {{ tx().bank.toRecord(summary().included, summary().includedTotal | chf) }}
             @if (summary().toCheck > 0) {
-              · les lignes non confirmées restent pour un prochain import
+              · {{ tx().bank.laterNote }}
             }
           </span>
           <button type="button" class="btn btn-primary" [disabled]="saving() || summary().included === 0" (click)="validate()">
-            {{ saving() ? 'Enregistrement…' : 'Valider ' + summary().included + ' paiement' + (summary().included > 1 ? 's' : '') }}
+            {{ saving() ? tx().common.saving : tx().bank.validate(summary().included) }}
           </button>
         </div>
       </section>

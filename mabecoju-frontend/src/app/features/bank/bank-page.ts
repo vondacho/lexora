@@ -6,7 +6,8 @@ import { BankReceiptResult, BankStatementAnalysis, BankStatementsService, Debtor
 import { AuthService } from '../../core/auth.service';
 import { ChfPipe, SwissDatePipe } from '../../shared/format';
 import { problemMessage } from '../../shared/problem';
-import { Decision, docRef, formatReference, initialDecisions, ManualChoice, PROBLEMS, receipts, Row, rows, summary } from './bank.model';
+import { Decision, docRef, formatReference, initialDecisions, ManualChoice, receipts, Row, rows, summary } from './bank.model';
+import { texts } from '../../i18n/i18n';
 
 interface Outcome {
   recorded: number;
@@ -45,7 +46,7 @@ export class BankPage {
     return a ? rows(a, this.decisions()) : [];
   });
   protected readonly summary = computed(() => summary(this.rows()));
-  protected readonly problems = PROBLEMS;
+  protected readonly tx = texts;
   protected readonly ref = docRef;
   protected readonly reference = formatReference;
 
@@ -109,7 +110,7 @@ export class BankPage {
       // read the file again: what was recorded now shows as already imported
       await this.analyse();
     } catch (e: unknown) {
-      this.error.set(problemMessage(e, 'Les paiements n’ont pas pu être enregistrés.'));
+      this.error.set(problemMessage(e, texts().bank.saveFailed));
     } finally {
       this.saving.set(false);
     }
@@ -123,7 +124,7 @@ export class BankPage {
     this.error.set(null);
     this.outcome.set(null);
     if (file.size > MAX_SIZE) {
-      this.error.set('Fichier trop grand pour un relevé (plus de 10 Mo).');
+      this.error.set(texts().bank.tooBig);
       return;
     }
     this.fileName.set(file.name);
@@ -146,7 +147,7 @@ export class BankPage {
       ].filter((d) => d.remaining > 0).sort((a, b) => a.folderName.localeCompare(b.folderName)));
     } catch (e: unknown) {
       this.analysis.set(null);
-      this.error.set(problemMessage(e, 'Le fichier n’a pas pu être lu.'));
+      this.error.set(problemMessage(e, texts().bank.readFailed));
     } finally {
       this.reading.set(false);
     }

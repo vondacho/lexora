@@ -1,6 +1,7 @@
 import { BankEntry, BankReceiptInput, BankStatementAnalysis } from '../../api/generated';
 import { formatChf } from '../../shared/format';
 import { fromCents, toCents } from '../../shared/money';
+import { texts } from '../../i18n/i18n';
 import { invoiceRef, requestRef } from '../folder/timeline.model';
 
 /** A document chosen by hand for a credit without match. */
@@ -49,8 +50,9 @@ export function rows(analysis: BankStatementAnalysis, decisions: Decision[]): Ro
 
 /** What recording the credit does to its document. */
 export function effectOf(entry: BankEntry, manual: ManualChoice | null): string {
+  const t = texts().bank.effect;
   if (entry.status === 'DUPLICATE') {
-    return 'déjà enregistré';
+    return t.duplicate;
   }
   const remaining = manual ? manual.remaining : entry.remaining;
   if (remaining === undefined || remaining === null || (!entry.target && !manual)) {
@@ -59,15 +61,15 @@ export function effectOf(entry: BankEntry, manual: ManualChoice | null): string 
   const amount = toCents(entry.amount);
   const owed = toCents(remaining);
   if (owed <= 0) {
-    return 'document déjà payé';
+    return t.paid;
   }
   if (amount > owed + 100) {
-    return `solde ${formatChf(fromCents(owed))} · ${formatChf(fromCents(amount - owed))} en avance`;
+    return t.surplus(formatChf(fromCents(owed)), formatChf(fromCents(amount - owed)));
   }
   if (amount >= owed - 100) {
-    return amount === owed ? 'solde le document' : `solde le document (écart ${formatChf(fromCents(amount - owed))})`;
+    return amount === owed ? t.settles : t.settlesGap(formatChf(fromCents(amount - owed)));
   }
-  return `partiel · reste ${formatChf(fromCents(owed - amount))}`;
+  return t.partial(formatChf(fromCents(owed - amount)));
 }
 
 export function receipts(list: Row[]): BankReceiptInput[] {
@@ -128,12 +130,3 @@ export function formatReference(reference: string | undefined): string {
   }
   return r.replace(/(.{4})(?=.)/g, '$1 ');
 }
-
-export const PROBLEMS: Record<string, string> = {
-  SUGGESTED: 'Sans référence : proposé d’après le montant et le nom',
-  OVERPAID: 'Montant supérieur au dû',
-  DOCUMENT_PAID: 'Le document est déjà payé',
-  UNKNOWN_REFERENCE: 'Référence inconnue',
-  NOT_FOUND: 'Aucun document de ce montant',
-  CURRENCY: 'Pas en francs suisses : à traiter à la main',
-};
