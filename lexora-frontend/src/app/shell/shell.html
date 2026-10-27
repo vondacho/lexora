@@ -14,10 +14,7 @@
   <a routerLink="/a-traiter" class="brand">
     <lx-brand />
   </a>
-  <a routerLink="/a-traiter" fragment="recherche" class="search" [attr.aria-label]="t().shell.search">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
-    <span class="search-text">{{ t().shell.searchPlaceholder }}</span>
-  </a>
+  <lx-global-search />
   <div class="user">
     <span class="user-name">{{ fullName() }}</span>
     <span class="avatar" aria-hidden="true">{{ initials() }}</span>

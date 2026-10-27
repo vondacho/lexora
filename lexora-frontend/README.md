@@ -19,6 +19,13 @@ Built so far:
 | Modèles de lettres | `/modeles` | Templates grouped by document type; name, printed title, use, intended recipients, pages of each copy (letter, itemised statement for invoices; the legacy layout names are kept); fields inserted at the cursor, unknown fields and missing amounts flagged; formatted text (TipTap: bold, italic, underline, lists, alignment) or plain text — plain-text templates stay plain until converted, as the legacy application would print HTML tags; preview filled with sample data, copy by copy, filled fields highlighted; duplicate, delete; unsaved changes are not lost by picking another template |
 | Encaissements | `/encaissements` | Import of the camt.054 notification of the bank (drop or choose the file): each credit matched by its reference, suggested by amount and name, or associated by hand with an open document; overpayments and suggestions to confirm; transactions already imported shown and never booked twice; foreign currencies left aside. `python3 ../tools/sample-camt054.py` writes a sample file paying the open documents of the demo data |
 
+The header holds a search field for every screen (`shell/global-search.ts`, rules in `global-search.model.ts`): folders
+by number, name or a client's name, invoices and advance requests by reference (`F-12`, `P-3`), payment slips by
+their QR or creditor reference, and the screens by name. `/` or Ctrl+K (⌘K) focuses it, the arrows choose, Enter opens,
+Escape clears; on phones it opens from an icon. A document opens its folder with the document selected
+(`/dossiers/2?element=f12`). Each kind of result is searched only with its grant (`invoicing:folder_search`,
+`invoice_display`, `request_display`, `debtor_search`).
+
 ## Run
 
 Node 22.22+ or 24.15+ (`nvm use` picks the version of `.nvmrc`; the `node` 20 on the PATH is too old). The API must run on port 8080, e.g. on H2 from the repository root:

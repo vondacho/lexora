@@ -1,4 +1,5 @@
 import { Folder } from '../../api/generated';
+import { plain } from '../../shared/text';
 
 export interface FolderFilter {
   text: string;
@@ -8,10 +9,6 @@ export interface FolderFilter {
 }
 
 export type Sort = 'name' | 'number' | 'recent';
-
-function plain(text: string | undefined): string {
-  return (text ?? '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
-}
 
 /** Text matches the number (prefix) or any word of the name (prefix), accents and case ignored. */
 export function filterFolders(folders: Folder[], f: FolderFilter): Folder[] {

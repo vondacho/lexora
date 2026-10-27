@@ -18,6 +18,8 @@
 }
 
 .header {
+  position: relative;
+  z-index: 28; /* above the page (search results), below the drawer and its backdrop */
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -53,25 +55,6 @@
   min-width: 0;
   color: var(--ink);
   text-decoration: none;
-}
-
-.search {
-  flex: 1 1 320px;
-  max-width: 560px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 40px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--ground);
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.search:hover {
-  color: var(--ink);
 }
 
 .user {
@@ -198,16 +181,8 @@
     --brand-tag-display: none;
   }
 
-  .search-text,
   .user-name {
     display: none;
-  }
-
-  .search {
-    flex: 0 0 40px;
-    justify-content: center;
-    padding: 0;
-    margin-left: auto;
   }
 
   .user {

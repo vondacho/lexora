@@ -1,4 +1,4 @@
-import { Component, computed, effect, ElementRef, inject, input, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, ElementRef, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Customer } from '../../api/generated';
 import { AuthService } from '../../core/auth.service';
@@ -33,6 +33,9 @@ export class FolderPage {
 
   /** Route parameter. */
   readonly id = input.required<string>();
+  /** Timeline item to open (?element=f12), e.g. from the header's search. */
+  readonly element = input<string>();
+  private shownElement: string | null = null;
 
   private readonly timeline = viewChild(Timeline);
   private readonly side = viewChild<ElementRef<HTMLElement>>('side');
@@ -74,7 +77,20 @@ export class FolderPage {
     effect(() => {
       this.panel.set(null);
       this.selectedKey.set(null);
+      this.shownElement = null;
       this.store.load(Number(this.id()));
+    });
+    // once the folder is loaded, open the item asked for in the URL (once: later reloads keep the user's choice)
+    effect(() => {
+      const key = this.element() ?? null;
+      if (key && key !== this.shownElement && this.items().some((i) => i.key === key)) {
+        this.shownElement = key;
+        untracked(() => {
+          this.panel.set(null);
+          this.selectedKey.set(key);
+          this.revealSide();
+        });
+      }
     });
   }
 

@@ -7,6 +7,7 @@ import { NAV_ITEMS } from './navigation';
 import { texts } from '../i18n/i18n';
 import { LangToggle } from '../i18n/lang-toggle';
 import { BrandMark } from '../core/brand-mark';
+import { GlobalSearch } from './global-search';
 
 const NAV_KEY = 'lexora.nav';
 /** Below this width the sidebar becomes a drawer over the page. */
@@ -14,7 +15,7 @@ const NARROW_QUERY = '(max-width: 900px)';
 
 @Component({
   selector: 'lx-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, LangToggle, BrandMark],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, LangToggle, BrandMark, GlobalSearch],
   templateUrl: './shell.html',
   styleUrl: './shell.css',
   host: { '(keydown.escape)': 'closeDrawer()' },
