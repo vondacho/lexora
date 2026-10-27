@@ -4,10 +4,11 @@ import { firstValueFrom } from 'rxjs';
 import { DocumentModel, DocumentModelInput, DocumentType, TemplatesService } from '../../api/generated';
 import { AuthService } from '../../core/auth.service';
 import { problemMessage } from '../../shared/problem';
+import { texts } from '../../i18n/i18n';
 import { fillTemplate, insertAt } from '../debtors/recall.model';
 import { RichEditor } from './rich-editor';
 import {
-  FIELDS,
+  fields,
   grouped,
   isHtml,
   layoutsFor,
@@ -16,7 +17,7 @@ import {
   pagesOf,
   sampleValues,
   textToHtml,
-  TYPE_LABELS,
+  typeLabel,
   unknownFields,
 } from './templates.model';
 
@@ -54,8 +55,9 @@ export class TemplatesPage {
   private readonly plain = viewChild<ElementRef<HTMLTextAreaElement>>('plainText');
   private readonly editorSection = viewChild<ElementRef<HTMLElement>>('editorSection');
 
-  protected readonly fields = FIELDS;
-  protected readonly typeLabels = TYPE_LABELS;
+  protected readonly tx = texts;
+  protected readonly fields = computed(fields);
+  protected readonly typeLabel = typeLabel;
   protected readonly types: DocumentType[] = ['INVOICE', 'ADVANCE_REQUEST', 'RECALL', 'UNDEFINED'];
 
   protected readonly state = signal<'loading' | 'ready' | 'error'>('loading');
@@ -191,7 +193,7 @@ export class TemplatesPage {
       );
       await this.reload();
       this.open(saved.id);
-      this.flash.set(existing ? 'Modèle enregistré.' : 'Modèle créé.');
+      this.flash.set(existing ? texts().templates.saved : texts().templates.created);
     });
   }
 
@@ -202,7 +204,7 @@ export class TemplatesPage {
       const copy = await firstValueFrom(
         this.templates.createDocumentModel({
           documentModelInput: {
-            name: (d.name.trim() + ' (copie)').slice(0, 80),
+            name: (d.name.trim() + texts().templates.copySuffix).slice(0, 80),
             title: d.title || undefined,
             type: d.type,
             content: d.content,
@@ -213,7 +215,7 @@ export class TemplatesPage {
       );
       await this.reload();
       this.open(copy.id);
-      this.flash.set('Copie créée : renommez-la puis adaptez le texte.');
+      this.flash.set(texts().templates.copied);
     });
   }
 
@@ -229,7 +231,7 @@ export class TemplatesPage {
       await this.reload();
       this.selected.set(null);
       this.draft.set(null);
-      this.flash.set('Modèle supprimé.');
+      this.flash.set(texts().templates.deleted);
     });
     this.confirmDelete.set(false);
   }

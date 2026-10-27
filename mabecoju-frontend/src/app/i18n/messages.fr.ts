@@ -1,4 +1,5 @@
 import { commonFr } from './common.i18n';
+import { templatesFr } from '../features/templates/templates.i18n';
 import { summariesFr } from '../features/summaries/summaries.i18n';
 import { vatFr } from '../features/vat/vat.i18n';
 import { expensesFr } from '../features/expenses/expenses.i18n';
@@ -23,6 +24,7 @@ export const fr = {
   expenses: expensesFr,
   vat: vatFr,
   summaries: summariesFr,
+  templates: templatesFr,
 };
 
 export type Messages = typeof fr;

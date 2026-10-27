@@ -2,36 +2,35 @@ import { afterNextRender, Component, DestroyRef, effect, ElementRef, inject, inp
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
+import { texts } from '../../i18n/i18n';
 
 interface Tool {
   id: string;
-  label: string;
-  title: string;
   run: (e: Editor) => void;
   active?: (e: Editor) => boolean;
 }
 
 /** Only what a letter needs, and what the PDF keeps: paragraphs, emphasis, lists, alignment. */
 const TOOLS: Tool[] = [
-  { id: 'bold', label: 'G', title: 'Gras', run: (e) => e.chain().focus().toggleBold().run(), active: (e) => e.isActive('bold') },
-  { id: 'italic', label: 'I', title: 'Italique', run: (e) => e.chain().focus().toggleItalic().run(), active: (e) => e.isActive('italic') },
-  { id: 'underline', label: 'S', title: 'Souligné', run: (e) => e.chain().focus().toggleUnderline().run(), active: (e) => e.isActive('underline') },
-  { id: 'bullets', label: '•', title: 'Liste à puces', run: (e) => e.chain().focus().toggleBulletList().run(), active: (e) => e.isActive('bulletList') },
-  { id: 'numbers', label: '1.', title: 'Liste numérotée', run: (e) => e.chain().focus().toggleOrderedList().run(), active: (e) => e.isActive('orderedList') },
-  { id: 'left', label: '⇤', title: 'Aligner à gauche', run: (e) => e.chain().focus().setTextAlign('left').run(), active: (e) => e.isActive({ textAlign: 'left' }) },
-  { id: 'center', label: '⇔', title: 'Centrer', run: (e) => e.chain().focus().setTextAlign('center').run(), active: (e) => e.isActive({ textAlign: 'center' }) },
-  { id: 'right', label: '⇥', title: 'Aligner à droite', run: (e) => e.chain().focus().setTextAlign('right').run(), active: (e) => e.isActive({ textAlign: 'right' }) },
-  { id: 'undo', label: '↶', title: 'Annuler', run: (e) => e.chain().focus().undo().run() },
-  { id: 'redo', label: '↷', title: 'Rétablir', run: (e) => e.chain().focus().redo().run() },
+  { id: 'bold', run: (e) => e.chain().focus().toggleBold().run(), active: (e) => e.isActive('bold') },
+  { id: 'italic', run: (e) => e.chain().focus().toggleItalic().run(), active: (e) => e.isActive('italic') },
+  { id: 'underline', run: (e) => e.chain().focus().toggleUnderline().run(), active: (e) => e.isActive('underline') },
+  { id: 'bullets', run: (e) => e.chain().focus().toggleBulletList().run(), active: (e) => e.isActive('bulletList') },
+  { id: 'numbers', run: (e) => e.chain().focus().toggleOrderedList().run(), active: (e) => e.isActive('orderedList') },
+  { id: 'left', run: (e) => e.chain().focus().setTextAlign('left').run(), active: (e) => e.isActive({ textAlign: 'left' }) },
+  { id: 'center', run: (e) => e.chain().focus().setTextAlign('center').run(), active: (e) => e.isActive({ textAlign: 'center' }) },
+  { id: 'right', run: (e) => e.chain().focus().setTextAlign('right').run(), active: (e) => e.isActive({ textAlign: 'right' }) },
+  { id: 'undo', run: (e) => e.chain().focus().undo().run() },
+  { id: 'redo', run: (e) => e.chain().focus().redo().run() },
 ];
 
 /** Formatted text of a letter template (TipTap), as HTML. */
 @Component({
   selector: 'mbj-rich-editor',
   template: `
-    <div class="toolbar" role="toolbar" [attr.aria-label]="'Mise en forme'">
+    <div class="toolbar" role="toolbar" [attr.aria-label]="tx().templates.editor.toolbar">
       @for (t of tools; track t.id) {
-        <button type="button" class="tool" [class]="'tool tool-' + t.id" [class.on]="activeTools().has(t.id)" [attr.aria-pressed]="t.active ? activeTools().has(t.id) : null" [title]="t.title" [attr.aria-label]="t.title" (mousedown)="$event.preventDefault()" (click)="apply(t)">{{ t.label }}</button>
+        <button type="button" class="tool" [class]="'tool tool-' + t.id" [class.on]="activeTools().has(t.id)" [attr.aria-pressed]="t.active ? activeTools().has(t.id) : null" [title]="tx().templates.editor.tools[t.id][1]" [attr.aria-label]="tx().templates.editor.tools[t.id][1]" (mousedown)="$event.preventDefault()" (click)="apply(t)">{{ tx().templates.editor.tools[t.id][0] }}</button>
       }
     </div>
     <div #host class="host" [attr.aria-labelledby]="labelledBy()"></div>
@@ -52,6 +51,7 @@ const TOOLS: Tool[] = [
   `,
 })
 export class RichEditor {
+  protected readonly tx = texts;
   /** HTML; replaced when it changes from outside (another template chosen). */
   readonly content = input('');
   readonly labelledBy = input<string | null>(null);
@@ -75,7 +75,7 @@ export class RichEditor {
           TextAlign.configure({ types: ['paragraph'] }),
         ],
         content: this.current,
-        editorProps: { attributes: { 'aria-multiline': 'true', role: 'textbox', 'aria-label': 'Texte de la lettre' } },
+        editorProps: { attributes: { 'aria-multiline': 'true', role: 'textbox', 'aria-label': texts().templates.text } },
         onUpdate: ({ editor }) => {
           this.current = editor.getHTML();
           this.contentChange.emit(this.current);

@@ -204,7 +204,7 @@ export class VatPage {
       await firstValueFrom(this.settings.changeBookingSettings({ bookingSettings: { vatRatePercent: this.rateDraft } }));
       this.editingRate.set(false);
       await this.load(this.period());
-      this.flash.set(`Taux changé à ${this.rateDraft} % : il vaut pour tous les décomptes non encore payés.`);
+      this.flash.set(texts().vat.rateChanged(this.rateDraft));
     } catch (e: unknown) {
       this.error.set(problemMessage(e, texts().vat.rateFailed));
     } finally {

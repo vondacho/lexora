@@ -1,19 +1,10 @@
 import { DocumentModel, DocumentType, PageLayout } from '../../api/generated';
+import { texts } from '../../i18n/i18n';
 
-export const TYPE_LABELS: Record<DocumentType, string> = {
-  INVOICE: 'Facture',
-  ADVANCE_REQUEST: 'Demande de provision',
-  RECALL: 'Rappel',
-  UNDEFINED: 'Tout document',
-};
+/** Name of a document type, in the current language. */
+export const typeLabel = (type: DocumentType) => texts().templates.types[type];
 
-/** Groups of the list, in the order of the work: invoices, requests, reminders. */
-export const GROUPS: { type: DocumentType; label: string }[] = [
-  { type: 'INVOICE', label: 'Factures' },
-  { type: 'ADVANCE_REQUEST', label: 'Demandes de provision' },
-  { type: 'RECALL', label: 'Rappels' },
-  { type: 'UNDEFINED', label: 'Autres' },
-];
+const GROUP_TYPES: DocumentType[] = ['INVOICE', 'ADVANCE_REQUEST', 'RECALL', 'UNDEFINED'];
 
 export interface Field {
   token: string;
@@ -22,24 +13,16 @@ export interface Field {
 }
 
 /** The placeholders the API fills when printing (same names as the legacy templates). */
-export const FIELDS: Field[] = [
-  { token: '$title_1', label: 'civilité', help: 'Madame, Monsieur… du premier destinataire' },
-  { token: '$firstName_1', label: 'prénom', help: 'Prénom du premier destinataire' },
-  { token: '$lastName_1', label: 'nom', help: 'Nom du premier destinataire' },
-  { token: '$amount_1', label: 'montant dû (1)', help: 'Part du premier destinataire ; sur un rappel, ce qu’il doit encore' },
-  { token: '$amount_2', label: 'montant dû (2)', help: 'Part du deuxième destinataire' },
-  { token: '$amount', label: 'montant', help: 'Part du client qui paie tout, sinon celle du premier destinataire' },
-  { token: '$title_2', label: 'civilité (2)', help: 'Civilité du deuxième destinataire' },
-  { token: '$firstName_2', label: 'prénom (2)', help: 'Prénom du deuxième destinataire' },
-  { token: '$refNo', label: 'n° du document', help: 'Numéro de la facture ou de la demande' },
-  { token: '$date', label: 'date', help: 'Date du document, ou du rappel (24 octobre 2026)' },
-  { token: '$delay', label: 'délai', help: 'Délai de paiement en jours' },
-  { token: '$dueDate', label: 'échéance', help: 'Date d’échéance (24 novembre 2026)' },
-  { token: '$invoiceDate', label: 'date de l’envoi', help: 'Date de la facture ou de la demande rappelée' },
-  { token: '$lastRecallDate', label: 'dernier rappel', help: 'Date du rappel précédent' },
-  { token: '$issuerName', label: 'signataire', help: 'Nom de la personne qui imprime' },
-  { token: '$tvaNo', label: 'n° TVA', help: 'Numéro TVA du bureau' },
+const FIELD_TOKENS = [
+  '$title_1', '$firstName_1', '$lastName_1', '$amount_1', '$amount_2', '$amount', '$title_2', '$firstName_2',
+  '$refNo', '$date', '$delay', '$dueDate', '$invoiceDate', '$lastRecallDate', '$issuerName', '$tvaNo',
 ];
+
+/** The placeholders offered as chips, with their label and help in the current language. */
+export function fields(): Field[] {
+  const t = texts().templates.fields;
+  return FIELD_TOKENS.map((token) => ({ token, label: t[token][0], help: t[token][1] }));
+}
 
 const KNOWN = new Set([
   'issuerName', 'issuerShortcut', 'refNo', 'tvaNo', 'date', 'delay', 'dueDate', 'modelTitle', 'invoiceDate', 'lastRecallDate', 'amount',
@@ -132,8 +115,9 @@ export function sampleValues(type: DocumentType, copy: 0 | 1, title: string): Re
 
 /** Templates of a type, alphabetically, for the list. */
 export function grouped(models: DocumentModel[]): { type: DocumentType; label: string; items: DocumentModel[] }[] {
-  return GROUPS.map((g) => ({
-    ...g,
-    items: models.filter((m) => (m.type ?? 'UNDEFINED') === g.type).sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')),
+  return GROUP_TYPES.map((type) => ({
+    type,
+    label: texts().templates.groups[type],
+    items: models.filter((m) => (m.type ?? 'UNDEFINED') === type).sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')),
   })).filter((g) => g.items.length > 0);
 }

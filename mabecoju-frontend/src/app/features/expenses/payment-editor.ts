@@ -36,8 +36,8 @@ const EMPTY: Draft = { date: todayIso(), kind: 'BANK', number: '', creditor: '',
         </div>
         <h2 id="pay-edit-title">{{ p.title }}</h2>
         <dl class="facts">
-          <dt>Créancier</dt><dd>{{ p.creditor }}</dd>
-          <dt>Montant</dt><dd class="mono">{{ p.amount | chf }}</dd>
+          <dt>{{ tx().expenses.creditor }}</dt><dd>{{ p.creditor }}</dd>
+          <dt>{{ tx().expenses.amount }}</dt><dd class="mono">{{ p.amount | chf }}</dd>
           <dt>{{ tx().expenses.editor.paidOn }}</dt><dd>{{ swiss(p.paidOn) }}</dd>
         </dl>
         <p class="note muted">{{ tx().expenses.editor.vatPaymentNote }}</p>
@@ -51,8 +51,8 @@ const EMPTY: Draft = { date: todayIso(), kind: 'BANK', number: '', creditor: '',
         </div>
         <h2 id="pay-edit-title">{{ p.title || p.creditor }}</h2>
         <dl class="facts">
-          <dt>Créancier</dt><dd>{{ p.creditor }}</dd>
-          <dt>Montant</dt><dd class="mono">{{ p.amount | chf }}</dd>
+          <dt>{{ tx().expenses.creditor }}</dt><dd>{{ p.creditor }}</dd>
+          <dt>{{ tx().expenses.amount }}</dt><dd class="mono">{{ p.amount | chf }}</dd>
           <dt>{{ tx().expenses.editor.ofWhichVat(p.taxRatePercent ?? 0) }}</dt><dd class="mono">{{ p.tax | chf }}</dd>
           <dt>{{ tx().expenses.editor.paidOn }}</dt><dd>{{ p.paidOn ? swiss(p.paidOn) : tx().expenses.editor.notYet }}</dd>
         </dl>
