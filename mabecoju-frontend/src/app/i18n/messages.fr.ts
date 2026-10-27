@@ -1,4 +1,5 @@
 import { commonFr } from './common.i18n';
+import { expensesFr } from '../features/expenses/expenses.i18n';
 import { bankFr } from '../features/bank/bank.i18n';
 import { debtorsFr } from '../features/debtors/debtors.i18n';
 import { foldersFr } from '../features/folders/folders.i18n';
@@ -17,6 +18,7 @@ export const fr = {
   folders: foldersFr,
   debtors: debtorsFr,
   bank: bankFr,
+  expenses: expensesFr,
 };
 
 export type Messages = typeof fr;

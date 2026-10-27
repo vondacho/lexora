@@ -1,25 +1,21 @@
 import { OutgoingPayment, StandingOrder } from '../../api/generated';
 import { fromCents, toCents } from '../../shared/money';
+import { monthNames, texts } from '../../i18n/i18n';
 
 export type KindFilter = 'all' | 'BANK' | 'EXPENSE' | 'PERMANENT' | 'unpaid';
 
 export const VAT_RATES = [0, 2.6, 3.8, 8.1];
 
-const MONTHS = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-];
-
 /** "2026-10" → "octobre 2026" */
 export function monthLabel(month: string): string {
   const [year, m] = month.split('-').map(Number);
-  return `${MONTHS[m - 1]} ${year}`;
+  return `${monthNames()[m - 1]} ${year}`;
 }
 
-/** "d’octobre 2026", "de mars 2026": the month after "de", with the elision French requires. */
+/** "d’octobre 2026", "de mars 2026" ("of October 2026"): with the elision French requires. */
 export function ofMonth(month: string): string {
-  const label = monthLabel(month);
-  return /^[aeiouéh]/i.test(label) ? 'd’' + label : 'de ' + label;
+  const [year, m] = month.split('-').map(Number);
+  return texts().common.ofMonth(monthNames()[m - 1], year);
 }
 
 export function shiftMonth(month: string, delta: number): string {
@@ -28,11 +24,10 @@ export function shiftMonth(month: string, delta: number): string {
   return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
 }
 
-export const kindLabel = (kind: OutgoingPayment['kind']) =>
-  kind === 'PERMANENT' ? 'Ordre permanent' : kind === 'EXPENSE' ? 'Frais' : 'Normal';
+export const kindLabel = (kind: OutgoingPayment['kind']) => texts().expenses.kinds[kind === 'PERMANENT' || kind === 'EXPENSE' ? kind : 'BANK'];
 
 /** Type shown for a payment: the VAT paid to the AFC is a normal payment booked by the VAT screen. */
-export const paymentLabel = (p: OutgoingPayment) => (p.vatPaymentId != null ? 'TVA' : kindLabel(p.kind));
+export const paymentLabel = (p: OutgoingPayment) => (p.vatPaymentId != null ? texts().expenses.kinds.VAT : kindLabel(p.kind));
 
 /** VAT included in an amount: amount × rate / (100 + rate), as the API computes it. */
 export function includedVat(amount: number, ratePercent: number): number {

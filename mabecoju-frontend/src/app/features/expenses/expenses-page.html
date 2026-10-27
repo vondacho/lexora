@@ -1,55 +1,55 @@
 <div class="head">
   <div>
-    <h1>Dépenses du bureau</h1>
-    <p class="muted sub">Paiements ponctuels et ordres permanents, TVA comprise.</p>
+    <h1>{{ tx().expenses.title }}</h1>
+    <p class="muted sub">{{ tx().expenses.sub }}</p>
   </div>
   <div class="buttons">
     @if (can.orderCreate) {
-      <button type="button" class="btn" (click)="newOrder()">+ Ordre permanent</button>
+      <button type="button" class="btn" (click)="newOrder()">{{ tx().expenses.newOrder }}</button>
     }
     @if (can.create) {
-      <button type="button" class="btn btn-primary" (click)="newPayment()">+ Dépense</button>
+      <button type="button" class="btn btn-primary" (click)="newPayment()">{{ tx().expenses.newPayment }}</button>
     }
   </div>
 </div>
 
 @switch (state()) {
   @case ('loading') {
-    <p class="muted">Chargement des dépenses…</p>
+    <p class="muted">{{ tx().expenses.loading }}</p>
   }
   @case ('error') {
-    <p class="problem">Les dépenses n’ont pas pu être chargées.</p>
+    <p class="problem">{{ tx().expenses.failed }}</p>
   }
   @case ('ready') {
     <div class="tiles">
       <div class="tile">
-        <span class="label">Dépenses {{ ofMonthName() }}</span>
+        <span class="label">{{ tx().expenses.monthTile(ofMonthName()) }}</span>
         <span class="value">{{ figures().monthTotal | chf }}</span>
-        <span class="note">{{ figures().monthCount }} paiement{{ figures().monthCount > 1 ? 's' : '' }}</span>
+        <span class="note">{{ tx().expenses.payments(figures().monthCount) }}</span>
       </div>
       <div class="tile">
-        <span class="label">TVA incluse</span>
+        <span class="label">{{ tx().expenses.vatIncluded }}</span>
         <span class="value">{{ figures().monthTax | chf }}</span>
-        <span class="note">non déductible (taux forfaitaire)</span>
+        <span class="note">{{ tx().expenses.vatNote }}</span>
       </div>
       <div class="tile">
-        <span class="label">À payer</span>
+        <span class="label">{{ tx().expenses.toPay }}</span>
         <span class="value" [class.warn]="figures().unpaidTotal > 0">{{ figures().unpaidTotal | chf }}</span>
-        <span class="note">{{ figures().unpaidCount }} sans date de paiement</span>
+        <span class="note">{{ tx().expenses.unpaidNote(figures().unpaidCount) }}</span>
       </div>
       @if (can.orders) {
         <div class="tile">
-          <span class="label">Ordres permanents</span>
+          <span class="label">{{ tx().expenses.orders }}</span>
           <span class="value">{{ figures().ordersTotal | chf }}</span>
-          <span class="note">{{ figures().ordersCount }} actif{{ figures().ordersCount > 1 ? 's' : '' }} · par mois</span>
+          <span class="note">{{ tx().expenses.ordersNote(figures().ordersCount) }}</span>
         </div>
       }
     </div>
 
-    <div class="tabs" role="tablist" aria-label="Dépenses">
-      <button type="button" role="tab" [attr.aria-selected]="tab() === 'payments'" (click)="setTab('payments')">Paiements</button>
+    <div class="tabs" role="tablist" [attr.aria-label]="tx().expenses.tabs">
+      <button type="button" role="tab" [attr.aria-selected]="tab() === 'payments'" (click)="setTab('payments')">{{ tx().expenses.paymentsTab }}</button>
       @if (can.orders) {
-        <button type="button" role="tab" [attr.aria-selected]="tab() === 'orders'" (click)="setTab('orders')">Ordres permanents</button>
+        <button type="button" role="tab" [attr.aria-selected]="tab() === 'orders'" (click)="setTab('orders')">{{ tx().expenses.orders }}</button>
       }
     </div>
 
@@ -62,49 +62,49 @@
         <section class="card" aria-labelledby="pay-list-title">
           <div class="list-head">
             <div class="month-nav">
-              <button type="button" class="icon-btn" (click)="moveMonth(-1)" aria-label="Mois précédent">‹</button>
-              <h2 id="pay-list-title">{{ filter() === 'unpaid' ? 'À payer, tous mois' : monthName() }}</h2>
-              <button type="button" class="icon-btn" (click)="moveMonth(1)" aria-label="Mois suivant">›</button>
+              <button type="button" class="icon-btn" (click)="moveMonth(-1)" [attr.aria-label]="tx().expenses.previousMonth">‹</button>
+              <h2 id="pay-list-title">{{ filter() === 'unpaid' ? tx().expenses.unpaidAll : monthName() }}</h2>
+              <button type="button" class="icon-btn" (click)="moveMonth(1)" [attr.aria-label]="tx().expenses.nextMonth">›</button>
             </div>
-            <div class="filters" role="group" aria-label="Filtrer par type">
-              @for (f of filters; track f.value) {
-                <button type="button" class="chip" [class.on]="filter() === f.value" [attr.aria-pressed]="filter() === f.value" (click)="filter.set(f.value)">{{ f.label }}</button>
+            <div class="filters" role="group" [attr.aria-label]="tx().expenses.filterByType">
+              @for (f of filters; track f) {
+                <button type="button" class="chip" [class.on]="filter() === f" [attr.aria-pressed]="filter() === f" (click)="filter.set(f)">{{ tx().expenses.filters[f] }}</button>
               }
             </div>
           </div>
           @if (rows().length === 0) {
-            <p class="muted empty">Aucun paiement {{ filter() === 'unpaid' ? 'à payer' : 'en ' + monthName() }}.</p>
+            <p class="muted empty">{{ filter() === 'unpaid' ? tx().expenses.noneUnpaid : tx().expenses.noneIn(monthName()) }}</p>
           } @else {
             <div class="table-box">
               <table class="payments">
                 <thead>
                   <tr>
-                    <th scope="col">Date</th>
-                    <th scope="col">Créancier · libellé</th>
-                    <th scope="col">Type</th>
-                    <th scope="col" class="num">TVA</th>
-                    <th scope="col" class="num">Montant</th>
-                    <th scope="col">Payé</th>
+                    <th scope="col">{{ tx().expenses.date }}</th>
+                    <th scope="col">{{ tx().expenses.creditorTitle }}</th>
+                    <th scope="col">{{ tx().expenses.type }}</th>
+                    <th scope="col" class="num">{{ tx().expenses.vat }}</th>
+                    <th scope="col" class="num">{{ tx().expenses.amount }}</th>
+                    <th scope="col">{{ tx().expenses.paid }}</th>
                   </tr>
                 </thead>
                 <tbody>
                   @for (p of rows(); track p.id) {
                     <tr [class.selected]="selectedPayment() === p.id" (click)="selectPayment(p)">
-                      <td class="mono" data-label="Date">{{ p.date | swissDate: false }}</td>
-                      <td data-label="Créancier">
+                      <td class="mono" [attr.data-label]="tx().expenses.date">{{ p.date | swissDate: false }}</td>
+                      <td [attr.data-label]="tx().expenses.creditor">
                         <button type="button" class="row-btn" [attr.aria-pressed]="selectedPayment() === p.id" (click)="$event.stopPropagation(); selectPayment(p)">
                           <span class="creditor">{{ p.creditor }}</span>
                           <span class="muted title">{{ p.title }}</span>
                         </button>
                       </td>
-                      <td data-label="Type"><span class="kind" [attr.data-kind]="p.vatPaymentId != null ? 'VAT' : p.kind">{{ typeOf(p) }}</span></td>
-                      <td class="mono num" data-label="TVA">{{ p.tax ? (p.tax | chf) : '–' }}</td>
-                      <td class="mono num" data-label="Montant">{{ p.amount | chf }}</td>
-                      <td data-label="Payé">
+                      <td [attr.data-label]="tx().expenses.type"><span class="kind" [attr.data-kind]="p.vatPaymentId != null ? 'VAT' : p.kind">{{ typeOf(p) }}</span></td>
+                      <td class="mono num" [attr.data-label]="tx().expenses.vat">{{ p.tax ? (p.tax | chf) : '–' }}</td>
+                      <td class="mono num" [attr.data-label]="tx().expenses.amount">{{ p.amount | chf }}</td>
+                      <td [attr.data-label]="tx().expenses.paid">
                         @if (p.paidOn) {
                           <span class="paid mono">{{ p.paidOn | swissDate: false }}</span>
                         } @else {
-                          <span class="unpaid">à payer</span>
+                          <span class="unpaid">{{ tx().expenses.unpaid }}</span>
                         }
                       </td>
                     </tr>
@@ -112,9 +112,9 @@
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td colspan="3">Total affiché</td>
-                    <td class="mono num" data-label="TVA">{{ shownTax() | chf }}</td>
-                    <td class="mono num" data-label="Montant">{{ shownTotal() | chf }}</td>
+                    <td colspan="3">{{ tx().expenses.shownTotal }}</td>
+                    <td class="mono num" [attr.data-label]="tx().expenses.vat">{{ shownTax() | chf }}</td>
+                    <td class="mono num" [attr.data-label]="tx().expenses.amount">{{ shownTotal() | chf }}</td>
                     <td></td>
                   </tr>
                 </tfoot>
@@ -127,8 +127,8 @@
             <mbj-payment-editor
               [payment]="editedPayment()"
               [canModify]="selectedPayment() === 'new' ? can.create : can.modify"
-              (saved)="afterPayment(selectedPayment() === 'new' ? 'Dépense ajoutée.' : 'Dépense modifiée.', $event)"
-              (deleted)="afterPayment('Paiement supprimé.', null)"
+              (saved)="afterPayment(selectedPayment() === 'new' ? tx().expenses.added : tx().expenses.modified, $event)"
+              (deleted)="afterPayment(tx().expenses.deleted, null)"
               (closed)="selectedPayment.set(null)"
               (showOrder)="showOrderOf($event)"
             />
@@ -139,37 +139,37 @@
       <div class="layout">
         <section class="card" aria-labelledby="orders-title">
           <div class="list-head">
-            <h2 id="orders-title">Ordres permanents</h2>
+            <h2 id="orders-title">{{ tx().expenses.orders }}</h2>
           </div>
           @if (data().orders.length === 0) {
-            <p class="muted empty">Aucun ordre permanent.</p>
+            <p class="muted empty">{{ tx().expenses.noOrders }}</p>
           } @else {
             <ul class="orders">
               @for (o of data().orders; track o.id) {
                 <li>
                   <button type="button" class="order" [class.selected]="selectedOrder() === o.id" [class.off]="!o.enabled" [attr.aria-pressed]="selectedOrder() === o.id" (click)="selectedOrder.set(selectedOrder() === o.id ? null : o.id)">
-                    <span class="day mono">le {{ o.dayOfMonth }}</span>
+                    <span class="day mono">{{ tx().expenses.day(o.dayOfMonth) }}</span>
                     <span class="order-main">
                       <span class="creditor">{{ o.title || o.creditor }}</span>
-                      <span class="muted small">{{ o.creditor }} · TVA {{ o.taxRatePercent ?? 0 }} %</span>
+                      <span class="muted small">{{ o.creditor }} · {{ tx().expenses.orderVat(o.taxRatePercent ?? 0) }}</span>
                     </span>
-                    <span class="state">{{ o.enabled ? 'actif' : 'suspendu' }}</span>
+                    <span class="state">{{ o.enabled ? tx().expenses.active : tx().expenses.suspended }}</span>
                     <span class="mono">{{ o.amount | chf }}</span>
                   </button>
                 </li>
               }
             </ul>
-            <p class="muted small total">Total mensuel des ordres actifs : <strong class="mono">{{ ordersTotal() | chf }}</strong></p>
+            <p class="muted small total">{{ tx().expenses.monthlyTotal }} <strong class="mono">{{ ordersTotal() | chf }}</strong></p>
           }
           @if (nextMonth(); as next) {
             <div class="execution">
               <div>
-                <strong>Prochaine exécution : {{ label(next) }}</strong>
-                <p class="muted small">Comptabilise un paiement payé par ordre actif, daté du jour de l’ordre.</p>
+                <strong>{{ tx().expenses.nextExecution(label(next)) }}</strong>
+                <p class="muted small">{{ tx().expenses.executionNote }}</p>
               </div>
               @if (can.orderModify) {
                 <button type="button" class="btn" [class.btn-primary]="confirmExecution()" [disabled]="executing() || activeOrders().length === 0" (click)="execute()">
-                  {{ executing() ? 'Comptabilisation…' : confirmExecution() ? 'Confirmer : ' + activeOrders().length + ' paiements pour ' + label(next) : 'Comptabiliser ' + label(next) }}
+                  {{ executing() ? tx().expenses.booking : confirmExecution() ? tx().expenses.confirmBook(activeOrders().length, label(next)) : tx().expenses.book(label(next)) }}
                 </button>
               }
               @if (executionError(); as message) {
@@ -183,8 +183,8 @@
             <mbj-order-editor
               [order]="editedOrder()"
               [canModify]="selectedOrder() === 'new' ? can.orderCreate : can.orderModify"
-              (saved)="afterOrder(selectedOrder() === 'new' ? 'Ordre créé.' : 'Ordre modifié.', $event)"
-              (deleted)="afterOrder('Ordre supprimé.', null)"
+              (saved)="afterOrder(selectedOrder() === 'new' ? tx().expenses.orderCreated : tx().expenses.orderModified, $event)"
+              (deleted)="afterOrder(tx().expenses.orderDeleted, null)"
               (closed)="selectedOrder.set(null)"
             />
           </aside>

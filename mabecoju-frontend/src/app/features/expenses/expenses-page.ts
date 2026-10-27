@@ -7,6 +7,7 @@ import { AuthService } from '../../core/auth.service';
 import { ChfPipe, SwissDatePipe } from '../../shared/format';
 import { todayIso } from '../../shared/money';
 import { problemMessage } from '../../shared/problem';
+import { texts } from '../../i18n/i18n';
 import { expenseFigures, KindFilter, kindLabel, monthLabel, ofMonth, orderOf, paymentLabel, shiftMonth, visiblePayments } from './expenses.model';
 import { OrderEditor } from './order-editor';
 import { PaymentEditor } from './payment-editor';
@@ -19,13 +20,7 @@ interface Books {
   next: NextExecution | null;
 }
 
-const FILTERS: { value: KindFilter; label: string }[] = [
-  { value: 'all', label: 'Tout' },
-  { value: 'BANK', label: 'Normal' },
-  { value: 'EXPENSE', label: 'Frais' },
-  { value: 'PERMANENT', label: 'Ordres' },
-  { value: 'unpaid', label: 'À payer' },
-];
+const FILTERS: KindFilter[] = ['all', 'BANK', 'EXPENSE', 'PERMANENT', 'unpaid'];
 
 /** Office expenses: one-off payments month by month, and the standing orders booked every month. */
 @Component({
@@ -86,6 +81,7 @@ export class ExpensesPage {
   protected readonly nextMonth = computed(() => this.data().next?.month ?? null);
   protected readonly activeOrders = computed(() => this.data().orders.filter((o) => o.enabled));
 
+  protected readonly tx = texts;
   protected readonly kind = kindLabel;
   protected readonly typeOf = paymentLabel;
 
@@ -132,7 +128,7 @@ export class ExpensesPage {
     this.setTab('orders');
     this.selectedOrder.set(order?.id ?? null);
     if (!order) {
-      this.flash.set('L’ordre de ce paiement n’existe plus.');
+      this.flash.set(texts().expenses.orderGone);
     }
   }
 
@@ -169,9 +165,9 @@ export class ExpensesPage {
       this.confirmExecution.set(false);
       await this.reload();
       this.month.set(month);
-      this.flash.set(`${booked.length} paiement${booked.length > 1 ? 's' : ''} comptabilisé${booked.length > 1 ? 's' : ''} pour ${monthLabel(month)}.`);
+      this.flash.set(texts().expenses.booked(booked.length, monthLabel(month)));
     } catch (e: unknown) {
-      this.executionError.set(problemMessage(e, 'Les ordres n’ont pas pu être comptabilisés.'));
+      this.executionError.set(problemMessage(e, texts().expenses.bookFailed));
     } finally {
       this.executing.set(false);
     }
@@ -191,7 +187,7 @@ export class ExpensesPage {
       this.state.set('ready');
     } catch {
       if (this.state() === 'ready') {
-        this.flash.set('Les dépenses n’ont pas pu être rechargées.');
+        this.flash.set(texts().expenses.reloadFailed);
       } else {
         this.state.set('error');
       }

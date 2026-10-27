@@ -1,4 +1,5 @@
 import { commonEn } from './common.i18n';
+import { expensesEn } from '../features/expenses/expenses.i18n';
 import { bankEn } from '../features/bank/bank.i18n';
 import { debtorsEn } from '../features/debtors/debtors.i18n';
 import { foldersEn } from '../features/folders/folders.i18n';
@@ -18,4 +19,5 @@ export const en: Messages = {
   folders: foldersEn,
   debtors: debtorsEn,
   bank: bankEn,
+  expenses: expensesEn,
 };

@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { BookingService, StandingOrder, StandingOrderInput } from '../../api/generated';
 import { ChfPipe } from '../../shared/format';
 import { problemMessage } from '../../shared/problem';
+import { texts } from '../../i18n/i18n';
 import { includedVat, VAT_RATES } from './expenses.model';
 
 interface Draft {
@@ -24,39 +25,39 @@ const EMPTY: Draft = { creditor: '', title: '', amount: null, rate: 0, day: 1, e
   template: `
     <section class="card editor" aria-labelledby="order-edit-title">
       <div class="head">
-        <h2 id="order-edit-title">{{ order() ? 'Modifier l’ordre permanent' : 'Nouvel ordre permanent' }}</h2>
-        <button type="button" class="btn btn-small" (click)="closed.emit()">Fermer</button>
+        <h2 id="order-edit-title">{{ order() ? tx().expenses.editor.editOrder : tx().expenses.editor.newOrder }}</h2>
+        <button type="button" class="btn btn-small" (click)="closed.emit()">{{ tx().common.close }}</button>
       </div>
       <form class="form" (ngSubmit)="save()">
-        <div class="field"><label for="o-cred">Créancier</label><input id="o-cred" name="creditor" class="input" maxlength="80" [(ngModel)]="draft.creditor" (ngModelChange)="touch()" /></div>
-        <div class="field"><label for="o-title">Libellé</label><input id="o-title" name="title" class="input" maxlength="80" [(ngModel)]="draft.title" /></div>
+        <div class="field"><label for="o-cred">{{ tx().expenses.creditor }}</label><input id="o-cred" name="creditor" class="input" maxlength="80" [(ngModel)]="draft.creditor" (ngModelChange)="touch()" /></div>
+        <div class="field"><label for="o-title">{{ tx().expenses.editor.title }}</label><input id="o-title" name="title" class="input" maxlength="80" [(ngModel)]="draft.title" /></div>
         <div class="row3">
-          <div class="field"><label for="o-amount">Montant TTC</label><input id="o-amount" name="amount" type="number" min="0" step="0.05" class="input" [(ngModel)]="draft.amount" (ngModelChange)="touch()" /></div>
+          <div class="field"><label for="o-amount">{{ tx().expenses.editor.amountGross }}</label><input id="o-amount" name="amount" type="number" min="0" step="0.05" class="input" [(ngModel)]="draft.amount" (ngModelChange)="touch()" /></div>
           <div class="field">
-            <label for="o-rate">Taux TVA</label>
+            <label for="o-rate">{{ tx().expenses.editor.vatRate }}</label>
             <select id="o-rate" name="rate" class="input" [(ngModel)]="draft.rate" (ngModelChange)="touch()">
               @for (r of rates; track r) {
                 <option [ngValue]="r">{{ r }} %</option>
               }
             </select>
           </div>
-          <div class="field"><label for="o-day">Jour du mois</label><input id="o-day" name="day" type="number" min="1" max="31" class="input" [(ngModel)]="draft.day" (ngModelChange)="touch()" /></div>
+          <div class="field"><label for="o-day">{{ tx().expenses.editor.dayOfMonth }}</label><input id="o-day" name="day" type="number" min="1" max="31" class="input" [(ngModel)]="draft.day" (ngModelChange)="touch()" /></div>
         </div>
-        <p class="note muted">dont TVA {{ vat() | chf }} · un jour au-delà de la fin du mois devient le dernier jour.</p>
-        <label class="check"><input type="checkbox" name="enabled" [(ngModel)]="draft.enabled" /> Actif · comptabilisé chaque mois</label>
-        <p class="note muted">Les changements valent pour les prochaines exécutions ; les paiements déjà comptabilisés restent inchangés.</p>
+        <p class="note muted">{{ tx().expenses.editor.orderVatNote(vat() | chf) }}</p>
+        <label class="check"><input type="checkbox" name="enabled" [(ngModel)]="draft.enabled" /> {{ tx().expenses.editor.enabled }}</label>
+        <p class="note muted">{{ tx().expenses.editor.orderChangeNote }}</p>
         @if (invalid() && tried()) {
-          <p class="problem">Indiquez le créancier, un montant supérieur à zéro et un jour entre 1 et 31.</p>
+          <p class="problem">{{ tx().expenses.editor.orderInvalid }}</p>
         }
         @if (error(); as message) {
           <p class="problem" role="alert">{{ message }}</p>
         }
         <div class="actions">
           <button type="submit" class="btn btn-primary" [disabled]="busy() || !canModify()">
-            {{ busy() ? 'Enregistrement…' : order() ? 'Enregistrer les modifications' : 'Créer l’ordre' }}
+            {{ busy() ? tx().common.saving : order() ? tx().expenses.editor.saveChanges : tx().expenses.editor.createOrder }}
           </button>
           @if (order() && canModify()) {
-            <button type="button" class="btn btn-warn" [disabled]="busy()" (click)="remove()">{{ confirming() ? 'Confirmer la suppression' : 'Supprimer' }}</button>
+            <button type="button" class="btn btn-warn" [disabled]="busy()" (click)="remove()">{{ confirming() ? tx().expenses.editor.confirmDelete : tx().common.delete }}</button>
           }
         </div>
       </form>
@@ -65,6 +66,7 @@ const EMPTY: Draft = { creditor: '', title: '', amount: null, rate: 0, day: 1, e
   styleUrl: './editor.css',
 })
 export class OrderEditor {
+  protected readonly tx = texts;
   private readonly booking = inject(BookingService);
 
   readonly order = input<StandingOrder | null>(null);
@@ -128,7 +130,7 @@ export class OrderEditor {
       );
       this.saved.emit(result.id);
     } catch (e: unknown) {
-      this.error.set(problemMessage(e, 'L’ordre n’a pas pu être enregistré.'));
+      this.error.set(problemMessage(e, texts().expenses.editor.orderSaveFailed));
     } finally {
       this.busy.set(false);
     }
@@ -148,7 +150,7 @@ export class OrderEditor {
       await firstValueFrom(this.booking.deleteStandingOrder({ id: o.id }), { defaultValue: null });
       this.deleted.emit();
     } catch (e: unknown) {
-      this.error.set(problemMessage(e, 'L’ordre n’a pas pu être supprimé.'));
+      this.error.set(problemMessage(e, texts().expenses.editor.orderDeleteFailed));
     } finally {
       this.busy.set(false);
       this.confirming.set(false);

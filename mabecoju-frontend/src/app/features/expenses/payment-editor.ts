@@ -6,6 +6,7 @@ import { BookingService, OutgoingPayment, OutgoingPaymentInput } from '../../api
 import { ChfPipe, formatChf, formatDate } from '../../shared/format';
 import { todayIso } from '../../shared/money';
 import { problemMessage } from '../../shared/problem';
+import { texts } from '../../i18n/i18n';
 import { includedVat, kindLabel, VAT_RATES } from './expenses.model';
 
 interface Draft {
@@ -30,87 +31,87 @@ const EMPTY: Draft = { date: todayIso(), kind: 'BANK', number: '', creditor: '',
     <section class="card editor" aria-labelledby="pay-edit-title">
       @if (vatExpense(); as p) {
         <div class="head">
-          <span class="muted small">Paiement de la TVA · {{ swiss(p.date) }}</span>
-          <button type="button" class="btn btn-small" (click)="closed.emit()">Fermer</button>
+          <span class="muted small">{{ tx().expenses.editor.vatPayment(swiss(p.date)) }}</span>
+          <button type="button" class="btn btn-small" (click)="closed.emit()">{{ tx().common.close }}</button>
         </div>
         <h2 id="pay-edit-title">{{ p.title }}</h2>
         <dl class="facts">
           <dt>Créancier</dt><dd>{{ p.creditor }}</dd>
           <dt>Montant</dt><dd class="mono">{{ p.amount | chf }}</dd>
-          <dt>Payé le</dt><dd>{{ swiss(p.paidOn) }}</dd>
+          <dt>{{ tx().expenses.editor.paidOn }}</dt><dd>{{ swiss(p.paidOn) }}</dd>
         </dl>
-        <p class="note muted">Comptabilisé avec le paiement de la TVA : il se modifie ou se supprime depuis le décompte TVA.</p>
+        <p class="note muted">{{ tx().expenses.editor.vatPaymentNote }}</p>
         <div class="actions">
-          <a class="btn" routerLink="/tva" [queryParams]="{ paiement: p.vatPaymentId }">Voir le décompte</a>
+          <a class="btn" routerLink="/tva" [queryParams]="{ paiement: p.vatPaymentId }">{{ tx().expenses.editor.seeStatement }}</a>
         </div>
       } @else if (readOnly(); as p) {
         <div class="head">
-          <span class="muted small">Ordre permanent · {{ swiss(p.date) }}</span>
-          <button type="button" class="btn btn-small" (click)="closed.emit()">Fermer</button>
+          <span class="muted small">{{ tx().expenses.editor.orderPayment(swiss(p.date)) }}</span>
+          <button type="button" class="btn btn-small" (click)="closed.emit()">{{ tx().common.close }}</button>
         </div>
         <h2 id="pay-edit-title">{{ p.title || p.creditor }}</h2>
         <dl class="facts">
           <dt>Créancier</dt><dd>{{ p.creditor }}</dd>
           <dt>Montant</dt><dd class="mono">{{ p.amount | chf }}</dd>
-          <dt>dont TVA ({{ p.taxRatePercent ?? 0 }} %)</dt><dd class="mono">{{ p.tax | chf }}</dd>
-          <dt>Payé le</dt><dd>{{ p.paidOn ? swiss(p.paidOn) : 'pas encore' }}</dd>
+          <dt>{{ tx().expenses.editor.ofWhichVat(p.taxRatePercent ?? 0) }}</dt><dd class="mono">{{ p.tax | chf }}</dd>
+          <dt>{{ tx().expenses.editor.paidOn }}</dt><dd>{{ p.paidOn ? swiss(p.paidOn) : tx().expenses.editor.notYet }}</dd>
         </dl>
-        <p class="note muted">Comptabilisé par l’exécution de l’ordre permanent : il ne se modifie pas ici. Changez l’ordre pour les prochains mois, ou supprimez ce paiement pour le refaire à la main.</p>
+        <p class="note muted">{{ tx().expenses.editor.orderPaymentNote }}</p>
         <div class="actions">
-          <button type="button" class="btn" (click)="showOrder.emit(p)">Voir l’ordre</button>
+          <button type="button" class="btn" (click)="showOrder.emit(p)">{{ tx().expenses.editor.seeOrder }}</button>
           @if (canModify()) {
-            <button type="button" class="btn btn-warn" [disabled]="busy()" (click)="remove()">{{ confirming() ? 'Confirmer la suppression' : 'Supprimer le paiement' }}</button>
+            <button type="button" class="btn btn-warn" [disabled]="busy()" (click)="remove()">{{ confirming() ? tx().expenses.editor.confirmDelete : tx().expenses.editor.deletePayment }}</button>
           }
         </div>
       } @else {
         <div class="head">
-          <h2 id="pay-edit-title">{{ payment() ? 'Modifier la dépense' : 'Nouvelle dépense' }}</h2>
-          <button type="button" class="btn btn-small" (click)="closed.emit()">Fermer</button>
+          <h2 id="pay-edit-title">{{ payment() ? tx().expenses.editor.edit : tx().expenses.editor.new }}</h2>
+          <button type="button" class="btn btn-small" (click)="closed.emit()">{{ tx().common.close }}</button>
         </div>
         <form class="form" (ngSubmit)="save()">
           <div class="row3">
-            <div class="field"><label for="d-date">Date</label><input id="d-date" name="date" type="date" class="input" [(ngModel)]="draft.date" /></div>
+            <div class="field"><label for="d-date">{{ tx().expenses.date }}</label><input id="d-date" name="date" type="date" class="input" [(ngModel)]="draft.date" /></div>
             <div class="field">
-              <label for="d-kind">Type</label>
+              <label for="d-kind">{{ tx().expenses.type }}</label>
               <select id="d-kind" name="kind" class="input" [(ngModel)]="draft.kind">
-                <option value="BANK">Normal</option>
-                <option value="EXPENSE">Frais</option>
+                <option value="BANK">{{ tx().expenses.kinds.BANK }}</option>
+                <option value="EXPENSE">{{ tx().expenses.kinds.EXPENSE }}</option>
               </select>
             </div>
-            <div class="field"><label for="d-no">N° de pièce</label><input id="d-no" name="number" class="input" maxlength="20" [(ngModel)]="draft.number" /></div>
+            <div class="field"><label for="d-no">{{ tx().expenses.editor.voucher }}</label><input id="d-no" name="number" class="input" maxlength="20" [(ngModel)]="draft.number" /></div>
           </div>
-          <div class="field"><label for="d-cred">Créancier</label><input id="d-cred" name="creditor" class="input" maxlength="80" required [(ngModel)]="draft.creditor" (ngModelChange)="touch()" /></div>
-          <div class="field"><label for="d-title">Libellé</label><input id="d-title" name="title" class="input" maxlength="80" [(ngModel)]="draft.title" /></div>
+          <div class="field"><label for="d-cred">{{ tx().expenses.creditor }}</label><input id="d-cred" name="creditor" class="input" maxlength="80" required [(ngModel)]="draft.creditor" (ngModelChange)="touch()" /></div>
+          <div class="field"><label for="d-title">{{ tx().expenses.editor.title }}</label><input id="d-title" name="title" class="input" maxlength="80" [(ngModel)]="draft.title" /></div>
           <div class="row3">
-            <div class="field"><label for="d-amount">Montant TTC</label><input id="d-amount" name="amount" type="number" min="0" step="0.05" class="input" [(ngModel)]="draft.amount" (ngModelChange)="touch()" /></div>
+            <div class="field"><label for="d-amount">{{ tx().expenses.editor.amountGross }}</label><input id="d-amount" name="amount" type="number" min="0" step="0.05" class="input" [(ngModel)]="draft.amount" (ngModelChange)="touch()" /></div>
             <div class="field">
-              <label for="d-rate">Taux TVA</label>
+              <label for="d-rate">{{ tx().expenses.editor.vatRate }}</label>
               <select id="d-rate" name="rate" class="input" [(ngModel)]="draft.rate" (ngModelChange)="touch()">
                 @for (r of rates; track r) {
                   <option [ngValue]="r">{{ r }} %</option>
                 }
               </select>
             </div>
-            <div class="field"><span class="label-like">dont TVA</span><span class="mono vat">{{ vat() | chf }}</span></div>
+            <div class="field"><span class="label-like">{{ tx().expenses.editor.ofVat }}</span><span class="mono vat">{{ vat() | chf }}</span></div>
           </div>
-          <div class="field"><label for="d-ref">Référence du bulletin du créancier (facultatif)</label><input id="d-ref" name="ticket" class="input mono" maxlength="80" [(ngModel)]="draft.ticket" /></div>
+          <div class="field"><label for="d-ref">{{ tx().expenses.editor.ticket }}</label><input id="d-ref" name="ticket" class="input mono" maxlength="80" [(ngModel)]="draft.ticket" /></div>
           <div class="paid">
-            <div class="field"><label for="d-paid">Payé le</label><input id="d-paid" name="paidOn" type="date" class="input" [(ngModel)]="draft.paidOn" /></div>
-            <button type="button" class="btn btn-small" (click)="draft.paidOn = today">Payé aujourd’hui</button>
-            <button type="button" class="btn btn-small" (click)="draft.paidOn = ''">Pas encore payé</button>
+            <div class="field"><label for="d-paid">{{ tx().expenses.editor.paidOn }}</label><input id="d-paid" name="paidOn" type="date" class="input" [(ngModel)]="draft.paidOn" /></div>
+            <button type="button" class="btn btn-small" (click)="draft.paidOn = today">{{ tx().expenses.editor.paidToday }}</button>
+            <button type="button" class="btn btn-small" (click)="draft.paidOn = ''">{{ tx().expenses.editor.notPaid }}</button>
           </div>
           @if (invalid() && tried()) {
-            <p class="problem">Indiquez le créancier et un montant supérieur à zéro.</p>
+            <p class="problem">{{ tx().expenses.editor.invalid }}</p>
           }
           @if (error(); as message) {
             <p class="problem" role="alert">{{ message }}</p>
           }
           <div class="actions">
             <button type="submit" class="btn btn-primary" [disabled]="busy() || !canModify()">
-              {{ busy() ? 'Enregistrement…' : payment() ? 'Enregistrer les modifications' : 'Ajouter la dépense' }}
+              {{ busy() ? tx().common.saving : payment() ? tx().expenses.editor.saveChanges : tx().expenses.editor.add }}
             </button>
             @if (payment() && canModify()) {
-              <button type="button" class="btn btn-warn" [disabled]="busy()" (click)="remove()">{{ confirming() ? 'Confirmer la suppression' : 'Supprimer' }}</button>
+              <button type="button" class="btn btn-warn" [disabled]="busy()" (click)="remove()">{{ confirming() ? tx().expenses.editor.confirmDelete : tx().common.delete }}</button>
             }
           </div>
         </form>
@@ -123,6 +124,7 @@ export class PaymentEditor {
   private readonly booking = inject(BookingService);
 
   /** null: a new payment. */
+  protected readonly tx = texts;
   readonly payment = input<OutgoingPayment | null>(null);
   readonly canModify = input(false);
   readonly saved = output<number>();
@@ -209,7 +211,7 @@ export class PaymentEditor {
       );
       this.saved.emit(result.id);
     } catch (e: unknown) {
-      this.error.set(problemMessage(e, 'La dépense n’a pas pu être enregistrée.'));
+      this.error.set(problemMessage(e, texts().expenses.editor.saveFailed));
     } finally {
       this.busy.set(false);
     }
@@ -230,7 +232,7 @@ export class PaymentEditor {
       await firstValueFrom(this.booking.deleteOutgoingPayment({ id: p.id }), { defaultValue: null });
       this.deleted.emit();
     } catch (e: unknown) {
-      this.error.set(problemMessage(e, 'La dépense n’a pas pu être supprimée.'));
+      this.error.set(problemMessage(e, texts().expenses.editor.deleteFailed));
     } finally {
       this.busy.set(false);
       this.confirming.set(false);
